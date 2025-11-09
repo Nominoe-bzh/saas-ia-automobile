@@ -3,25 +3,30 @@ import { z } from 'zod'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
 
-export const onRequestPost: PagesFunction = async (context) => {
+// Déclare les variables disponibles dans context.env
+type EnvBindings = {
+  SUPABASE_URL: string
+  SUPABASE_ANON_KEY: string
+  RESEND_API_KEY: string
+}
+
+// ✅ PagesFunction reçoit maintenant le type EnvBindings
+export const onRequestPost: PagesFunction<EnvBindings> = async (context) => {
   try {
     const body = await context.request.json()
     const { email } = z.object({ email: z.string().email() }).parse(body)
 
-    // Connexion à Supabase
     const supabase = createClient(
-      context.env.SUPABASE_URL as string,
-      context.env.SUPABASE_ANON_KEY as string
+      context.env.SUPABASE_URL,
+      context.env.SUPABASE_ANON_KEY
     )
 
-    // Insertion de l’email (ignore les doublons)
     const { error } = await supabase.from('waitlist').insert({ email })
     if (error && !String(error.message).toLowerCase().includes('duplicate')) {
       return new Response(JSON.stringify({ ok:false, error:error.message }), { status:400 })
     }
 
-    // Envoi de l’email via Resend
-    const resend = new Resend(context.env.RESEND_API_KEY as string)
+    const resend = new Resend(context.env.RESEND_API_KEY)
     await resend.emails.send({
       from: 'SaaS IA Automobile <onboarding@resend.dev>',
       to: email,

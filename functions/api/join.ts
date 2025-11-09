@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
 
-export const onRequestPost = async (context: any) => {
+export const onRequestPost: PagesFunction = async (context) => {
   try {
     const body = await context.request.json()
     const { email } = z.object({ email: z.string().email() }).parse(body)

@@ -6,10 +6,9 @@ type EnvBindings = {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
   RESEND_API_KEY: string
+  MAIL_FROM: string                // ← ajouté
 }
 
-// 👇 Pas d'import de '@cloudflare/workers-types' ni de PagesFunction.
-//    On définit un type minimal basé sur les types DOM déjà fournis par Next.
 type CFContext = {
   env: EnvBindings
   request: Request
@@ -27,14 +26,14 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       return new Response(JSON.stringify({ ok: false, error: `supabase: ${error.message}` }), { status: 400 })
     }
 
-    // 2) Envoi email via Resend API HTTP (compatible Workers)
+    // 2) Envoi email via Resend (domaine vérifié)
     const payload = {
-      from: 'SaaS IA Automobile <onboarding@resend.dev>',
+      from: context.env.MAIL_FROM,   // ← utilise ton domaine vérifié
       to: [email],
       subject: 'Bienvenue — 3 analyses offertes à l’ouverture',
       text: `Bonjour,
 
-Tu es sur liste d’attente de SaaS IA Automobile. À l’ouverture, tu recevras 3 analyses gratuites pour tester l’outil et économiser 500–2 000 € à l’achat.
+Tu es sur liste d’attente de Check Ton Véhicule. À l’ouverture, tu recevras 3 analyses gratuites pour tester l’outil et économiser 500–2 000 € à l’achat.
 
 — Johan`
     }
@@ -50,7 +49,7 @@ Tu es sur liste d’attente de SaaS IA Automobile. À l’ouverture, tu recevras
 
     if (!r.ok) {
       const errTxt = await r.text().catch(() => '')
-      return new Response(JSON.stringify({ ok: false, error: `resend: ${r.status} ${errTxt}` }), { status: 400 })
+      return new Response(JSON.stringify({ ok: false, error: `resend: ${r.status}\n${errTxt}` }), { status: 400 })
     }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200 })

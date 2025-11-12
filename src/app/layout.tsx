@@ -28,6 +28,41 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+      import Script from 'next/script'
+
+export const metadata = {
+  title: 'Check Ton Véhicule – Assistant IA pour voitures d’occasion',
+  description:
+    'Analyse IA d’annonces auto, détection de risques, aide à la négociation. Gagnez 500–2000€ sur votre prochaine voiture.',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="fr">
+      <body>
+        {children}
+
+        {/* Plausible custom script */}
+        <Script
+          async
+          src="https://plausible.io/js/pa-wrlyMwgrkJe5XcixXf6Nm.js"
+        />
+
+        <Script id="plausible-init">
+          {`
+            window.plausible = window.plausible || function() {
+              (plausible.q = plausible.q || []).push(arguments)
+            };
+            plausible.init = plausible.init || function(i) {
+              plausible.o = i || {};
+            };
+            plausible.init();
+          `}
+        </Script>
+      </body>
+    </html>
+  )
+}
       </body>
     </html>
   );

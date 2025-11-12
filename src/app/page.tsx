@@ -1,18 +1,12 @@
-// Ajoute ceci tout en haut du fichier, tout seul :
-declare global {
-  interface Window {
-    plausible?: (...args: any[]) => void
-  }
-}
-
 'use client'
+
 import { useState } from 'react'
 
 export default function Home() {
   const [email, setEmail] = useState('')
   const [prenom, setPrenom] = useState('')
   const [typeUser, setTypeUser] = useState('Particulier')
-  const [status, setStatus] = useState<'idle'|'pending'|'ok'|'err'>('idle')
+  const [status, setStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,35 +17,26 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, prenom, type_utilisateur: typeUser }),
       })
+
       setStatus(res.ok ? 'ok' : 'err')
+
       if (res.ok) {
-          setEmail('')
-          setPrenom('')
-          setTypeUser('Particulier')
+        setEmail('')
+        setPrenom('')
+        setTypeUser('Particulier')
 
-          if (typeof window !== 'undefined' && window.plausible) {
-              window.plausible('Signup', {
-                  props: {
-                      source: 'landing',
-                      role: typeUser,
-                  },
-              })
-          }
+        if (typeof window !== 'undefined' && (window as any).plausible) {
+          ;(window as any).plausible('Signup', {
+            props: {
+              source: 'landing',
+              role: typeUser,
+            },
+          })
+        }
       }
-      props: {
-        source: 'landing',
-        role: typeUser,
-      },
-    })
-  }
-}
-
-
-
-
-
-
-    } catch { setStatus('err') }
+    } catch {
+      setStatus('err')
+    }
   }
 
   return (
@@ -70,27 +55,37 @@ export default function Home() {
       <section className="px-6 py-6 max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Analyse d’annonce</h3>
-          <p className="text-sm text-gray-600 mt-2">Détection des incohérences, alertes risques, check points.</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Détection des incohérences, alertes risques, check points.
+          </p>
         </div>
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Négociation assistée</h3>
-          <p className="text-sm text-gray-600 mt-2">Arguments chiffrés basés sur marché et historique.</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Arguments chiffrés basés sur marché et historique.
+          </p>
         </div>
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Économie potentielle</h3>
-          <p className="text-sm text-gray-600 mt-2">500–2 000 € économisés en moyenne sur le prix final.</p>
+          <p className="text-sm text-gray-600 mt-2">
+            500–2 000 € économisés en moyenne sur le prix final.
+          </p>
         </div>
       </section>
 
       {/* Social proof */}
       <section className="px-6 py-6 max-w-5xl mx-auto text-center">
-        <p className="text-sm text-gray-500">Phase pilote en cours — accès prioritaire à l’ouverture.</p>
+        <p className="text-sm text-gray-500">
+          Phase pilote en cours — accès prioritaire à l’ouverture.
+        </p>
       </section>
 
       {/* Signup */}
       <section className="px-6 py-12 max-w-xl mx-auto">
         <div className="rounded-2xl border p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-center">Rejoindre la liste d’attente</h2>
+          <h2 className="text-xl font-semibold text-center">
+            Rejoindre la liste d’attente
+          </h2>
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium">Prénom</label>
@@ -134,10 +129,14 @@ export default function Home() {
             </button>
 
             {status === 'ok' && (
-              <p className="text-green-700 text-sm text-center">Merci. Vérifiez votre boîte mail.</p>
+              <p className="text-green-700 text-sm text-center">
+                Merci. Vérifiez votre boîte mail.
+              </p>
             )}
             {status === 'err' && (
-              <p className="text-red-700 text-sm text-center">Erreur d’envoi. Réessayez.</p>
+              <p className="text-red-700 text-sm text-center">
+                Erreur d’envoi. Réessayez.
+              </p>
             )}
           </form>
           <p className="text-xs text-gray-500 mt-4 text-center">

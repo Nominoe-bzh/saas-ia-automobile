@@ -1,3 +1,10 @@
+// Ajoute ceci tout en haut du fichier, tout seul :
+declare global {
+  interface Window {
+    plausible?: (...args: any[]) => void
+  }
+}
+
 'use client'
 import { useState } from 'react'
 
@@ -17,7 +24,33 @@ export default function Home() {
         body: JSON.stringify({ email, prenom, type_utilisateur: typeUser }),
       })
       setStatus(res.ok ? 'ok' : 'err')
-      if (res.ok) { setEmail(''); setPrenom(''); setTypeUser('Particulier') }
+      if (res.ok) {
+          setEmail('')
+          setPrenom('')
+          setTypeUser('Particulier')
+
+          if (typeof window !== 'undefined' && window.plausible) {
+              window.plausible('Signup', {
+                  props: {
+                      source: 'landing',
+                      role: typeUser,
+                  },
+              })
+          }
+      }
+      props: {
+        source: 'landing',
+        role: typeUser,
+      },
+    })
+  }
+}
+
+
+
+
+
+
     } catch { setStatus('err') }
   }
 

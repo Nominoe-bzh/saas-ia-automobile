@@ -1,5 +1,5 @@
 // functions/api/analyse.ts
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 
 // Schéma d'entrée : ce que le frontend enverra à l'API
 const InputSchema = z.object({
@@ -20,7 +20,7 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
     // 1) Lecture du body JSON
     const body = await context.request.json()
 
-    // 2) Validation avec Zod
+    // 2) Validation avec Zod (peut lever une ZodError)
     const input = InputSchema.parse(body)
 
     // 3) Pour l'instant on renvoie juste ce qui est valide
@@ -35,7 +35,23 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       },
     )
   } catch (e: any) {
-    // Erreur de JSON ou de validation Zod
+    // Cas 1 : erreur de validation Zod
+    if (e instanceof ZodError) {
+      const first = e.errors?.[0]?.message ?? "Requête invalide"
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: first,
+          issues: e.errors, // détaillé si tu veux debugger
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    // Cas 2 : autre erreur (JSON invalide, etc.)
     return new Response(
       JSON.stringify({
         ok: false,

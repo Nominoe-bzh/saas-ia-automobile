@@ -1,14 +1,12 @@
 // functions/api/analyse.ts
 import { z } from 'zod'
 
-// 1) Schéma d'entrée : ce que le frontend enverra à l'API
 const InputSchema = z.object({
   annonce: z.string().min(20, "Texte d'annonce trop court"),
   url: z.string().url().optional(),
   budget: z.number().int().positive().optional(),
 })
 
-// 2) Schéma de sortie : ce que l'API renverra (résultat de l'analyse)
 const OutputSchema = z.object({
   fiche: z.object({
     marque: z.string().nullable(),
@@ -51,85 +49,66 @@ const OutputSchema = z.object({
 
 type CFContext = {
   request: Request
+  env: { OPENAI_API_KEY: string }
 }
 
 export async function onRequestPost(context: CFContext): Promise<Response> {
   try {
-    // 1) Lecture + validation de l'entrée
     const body = await context.request.json()
     const input = InputSchema.parse(body)
 
-    // 2) Construction d'un résultat "fake" (plus tard : remplacé par l'IA)
-    const fakeResult = OutputSchema.parse({
-      fiche: {
-        marque: 'Peugeot',
-        modele: '208',
-        version: '1.2 PureTech 100',
-        energie: 'Essence',
-        annee: 2020,
-        kilometrage: 65000,
-        prix: 15900,
-        boite: 'Manuelle',
-        puissance_ch: 100,
-        finition: 'Allure',
+    const prompt = `
+Tu es un assistant expert automobile. Voici une annonce de voiture d'occasion :
+
+ANNONCE : """${input.annonce}"""
+
+Objectif : extraire et structurer les informations au format JSON suivant :
+
+${OutputSchema.toString()}
+
+Respecte exactement les noms de champ, types, structure. Les valeurs doivent être réalistes. N’invente pas ce qui n’est pas mentionné, mets "null" si inconnu.
+
+Renvoie seulement le JSON sans explication.
+`
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${context.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      risques: [
-        {
-          niveau: 'moyen',
-          type: 'Entretien',
-          detail:
-            "Historique entretien non complet dans l'annonce. Verifier factures et carnet a jour avant achat.",
-          impact_financier_estime: 800,
-        },
-        {
-          niveau: 'faible',
-          type: 'Usure classique',
-          detail:
-            'Pneus et freins a controler. Prevoir un petit budget entretien la premiere annee.',
-          impact_financier_estime: 300,
-        },
-      ],
-      incoherences: [
-        {
-          champ: 'kilometrage',
-          description:
-            "Kilometrage annonce sans precision sur le type de trajet (ville / route). Manque de transparence.",
-        },
-      ],
-      score_global: 78,
-      avis: {
-        recommandation: 'negocier',
-        resume:
-          "Annonce globalement correcte, mais quelques zones floues sur l'entretien. A envisager si le vendeur fournit les factures et si une remise est obtenue.",
-        fourchette_prix_recommande: {
-          min: 14500,
-          max: 15200,
-        },
-      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+      }),
     })
 
-    // 3) Réponse structurée
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        input,       // ce que le client a envoyé (utile pour debug)
-        analyse: fakeResult, // analyse structurée
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '')
+      throw new Error(`openai: ${response.status} ${errText}`)
+    }
+
+    const res = await response.json()
+    const content = res.choices?.[0]?.message?.content ?? ''
+
+    let parsed
+    try {
+      parsed = JSON.parse(content)
+    } catch {
+      throw new Error("openai: réponse non JSON")
+    }
+
+    const analyse = OutputSchema.parse(parsed)
+
+    return new Response(JSON.stringify({ ok: true, analyse }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 200,
+    })
   } catch (e: any) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: e?.message ?? 'invalid_request',
-      }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
+    return new Response(JSON.stringify({ ok: false, error: e?.message || 'Erreur inconnue' }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 400,
+    })
   }
 }

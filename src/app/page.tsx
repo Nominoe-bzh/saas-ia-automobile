@@ -43,8 +43,14 @@ export default function Home() {
       setPrenom('')
       setTypeUser('Particulier')
 
-      if (typeof window !== 'undefined' && window.plausible) {
-        window.plausible('Signup', {
+        setTypeUser('Particulier')
+
+      if (typeof window !== 'undefined') {
+        const plausibleFn = (window as any).plausible as
+          | ((eventName: string, options?: any) => void)
+          | undefined
+
+        plausibleFn?.('Signup', {
           props: {
             source: 'landing',
             role: typeUser,

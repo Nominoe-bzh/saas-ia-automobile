@@ -1,26 +1,20 @@
-// src/app/page.tsx
-
-// 1) Typage pour Plausible (déjà utilisé pour le formulaire d’inscription)
-declare global {
-  interface Window {
-    plausible?: (event: string, options?: { props?: Record<string, any> }) => void
-  }
-}
-
 'use client'
+
 import { useState } from 'react'
+
+type WaitlistStatus = 'idle' | 'pending' | 'ok' | 'err'
+type AnalyseStatus = 'idle' | 'pending' | 'ok' | 'err'
 
 export default function Home() {
   // --- Etat formulaire liste d’attente ---
   const [email, setEmail] = useState('')
   const [prenom, setPrenom] = useState('')
   const [typeUser, setTypeUser] = useState('Particulier')
-  const [status, setStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
+  const [status, setStatus] = useState<WaitlistStatus>('idle')
 
   // --- Etat test d’analyse ---
   const [annonceTest, setAnnonceTest] = useState('')
-  const [analyseStatus, setAnalyseStatus] =
-    useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
+  const [analyseStatus, setAnalyseStatus] = useState<AnalyseStatus>('idle')
   const [analyseData, setAnalyseData] = useState<any | null>(null)
   const [analyseError, setAnalyseError] = useState<string | null>(null)
 
@@ -133,7 +127,7 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Signup list d’attente */}
+      {/* Signup liste d’attente */}
       <section className="px-6 py-12 max-w-xl mx-auto">
         <div className="rounded-2xl border p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-center">
@@ -264,16 +258,14 @@ export default function Home() {
                     <div className="rounded-xl border bg-white p-4">
                       <h3 className="font-semibold">Principaux risques</h3>
                       <ul className="mt-2 list-disc list-inside space-y-1">
-                        {analyseData.risques.map(
-                          (r: any, idx: number) => (
-                            <li key={idx}>
-                              <span className="font-medium">
-                                [{r.niveau.toUpperCase()}] {r.type} :
-                              </span>{' '}
-                              {r.detail}
-                            </li>
-                          ),
-                        )}
+                        {analyseData.risques.map((r: any, idx: number) => (
+                          <li key={idx}>
+                            <span className="font-medium">
+                              [{r.niveau.toUpperCase()}] {r.type} :
+                            </span>{' '}
+                            {r.detail}
+                          </li>
+                        ))}
                       </ul>
                     </div>
                   )}

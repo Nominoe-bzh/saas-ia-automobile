@@ -1,41 +1,94 @@
-'use client'
+// src/app/page.tsx
 
+// 1) Typage pour Plausible (déjà utilisé pour le formulaire d’inscription)
+declare global {
+  interface Window {
+    plausible?: (event: string, options?: { props?: Record<string, any> }) => void
+  }
+}
+
+'use client'
 import { useState } from 'react'
 
 export default function Home() {
+  // --- Etat formulaire liste d’attente ---
   const [email, setEmail] = useState('')
   const [prenom, setPrenom] = useState('')
   const [typeUser, setTypeUser] = useState('Particulier')
   const [status, setStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
 
-  const submit = async (e: React.FormEvent) => {
+  // --- Etat test d’analyse ---
+  const [annonceTest, setAnnonceTest] = useState('')
+  const [analyseStatus, setAnalyseStatus] =
+    useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
+  const [analyseData, setAnalyseData] = useState<any | null>(null)
+  const [analyseError, setAnalyseError] = useState<string | null>(null)
+
+  // ------- Soumission liste d’attente (/api/join) -------
+  const submitWaitlist = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('pending')
     try {
       const res = await fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, prenom, type_utilisateur: typeUser }),
+        body: JSON.stringify({
+          email,
+          prenom,
+          type_utilisateur: typeUser,
+        }),
       })
 
-      setStatus(res.ok ? 'ok' : 'err')
+      if (!res.ok) {
+        setStatus('err')
+        return
+      }
 
-      if (res.ok) {
-        setEmail('')
-        setPrenom('')
-        setTypeUser('Particulier')
+      setStatus('ok')
+      setEmail('')
+      setPrenom('')
+      setTypeUser('Particulier')
 
-        if (typeof window !== 'undefined' && (window as any).plausible) {
-          ;(window as any).plausible('Signup', {
-            props: {
-              source: 'landing',
-              role: typeUser,
-            },
-          })
-        }
+      if (typeof window !== 'undefined' && window.plausible) {
+        window.plausible('Signup', {
+          props: {
+            source: 'landing',
+            role: typeUser,
+          },
+        })
       }
     } catch {
       setStatus('err')
+    }
+  }
+
+  // ------- Soumission test d’analyse (/api/analyse) -------
+  const submitAnalyse = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAnalyseStatus('pending')
+    setAnalyseError(null)
+    setAnalyseData(null)
+
+    try {
+      const res = await fetch('/api/analyse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ annonce: annonceTest }),
+      })
+
+      const json = await res.json().catch(() => null)
+
+      if (!res.ok || !json?.ok) {
+        setAnalyseStatus('err')
+        setAnalyseError(json?.error ?? 'Erreur lors de l’analyse')
+        return
+      }
+
+      setAnalyseStatus('ok')
+      setAnalyseData(json.analyse)
+    } catch (err: any) {
+      setAnalyseStatus('err')
+      setAnalyseError(err?.message ?? 'Erreur réseau')
     }
   }
 
@@ -80,13 +133,13 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Signup */}
+      {/* Signup list d’attente */}
       <section className="px-6 py-12 max-w-xl mx-auto">
         <div className="rounded-2xl border p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-center">
             Rejoindre la liste d’attente
           </h2>
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <form onSubmit={submitWaitlist} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium">Prénom</label>
               <input
@@ -142,6 +195,100 @@ export default function Home() {
           <p className="text-xs text-gray-500 mt-4 text-center">
             En soumettant, vous acceptez de recevoir un email d’accueil.
           </p>
+        </div>
+      </section>
+
+      {/* Bloc test d’analyse (mode démo) */}
+      <section className="px-6 pb-16 max-w-3xl mx-auto">
+        <div className="rounded-2xl border p-6 bg-gray-50">
+          <h2 className="text-lg font-semibold text-center">
+            Tester une analyse (démo)
+          </h2>
+          <p className="text-xs text-gray-500 text-center mt-1">
+            Pour le moment, l’analyse est générée en mode démonstration (fallback),
+            le temps d’activer le budget IA OpenAI.
+          </p>
+
+          <form onSubmit={submitAnalyse} className="mt-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium">
+                Collez ici une annonce de voiture d’occasion
+              </label>
+              <textarea
+                className="mt-1 w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-black min-h-[120px]"
+                value={annonceTest}
+                onChange={(e) => setAnnonceTest(e.target.value)}
+                placeholder="Ex : Clio 4 - 1.5 dCi 90 ch Zen, 2016, 120 000 km, diesel, CT OK, 8 000 €..."
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={analyseStatus === 'pending'}
+              className="w-full rounded-md bg-black text-white py-2 font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              {analyseStatus === 'pending'
+                ? 'Analyse en cours…'
+                : 'Lancer une analyse (démo)'}
+            </button>
+          </form>
+
+          {/* Affichage des résultats */}
+          <div className="mt-6">
+            {analyseStatus === 'err' && (
+              <p className="text-sm text-red-700 text-center">
+                {analyseError ?? 'Erreur lors de l’analyse.'}
+              </p>
+            )}
+
+            {analyseStatus === 'ok' && analyseData && (
+              <div className="space-y-4 text-sm text-left">
+                <div className="rounded-xl border bg-white p-4">
+                  <h3 className="font-semibold">Score & avis</h3>
+                  <p className="mt-1">
+                    <span className="font-medium">Score global :</span>{' '}
+                    {analyseData.score_global}/100
+                  </p>
+                  <p className="mt-1">
+                    <span className="font-medium">Recommandation :</span>{' '}
+                    {analyseData.avis?.recommandation}
+                  </p>
+                  <p className="mt-1 text-gray-700">
+                    {analyseData.avis?.resume}
+                  </p>
+                </div>
+
+                {Array.isArray(analyseData.risques) &&
+                  analyseData.risques.length > 0 && (
+                    <div className="rounded-xl border bg-white p-4">
+                      <h3 className="font-semibold">Principaux risques</h3>
+                      <ul className="mt-2 list-disc list-inside space-y-1">
+                        {analyseData.risques.map(
+                          (r: any, idx: number) => (
+                            <li key={idx}>
+                              <span className="font-medium">
+                                [{r.niveau.toUpperCase()}] {r.type} :
+                              </span>{' '}
+                              {r.detail}
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                <details className="rounded-xl border bg-white p-4">
+                  <summary className="cursor-pointer font-semibold">
+                    Voir le JSON complet (debug)
+                  </summary>
+                  <pre className="mt-2 text-xs overflow-x-auto">
+                    {JSON.stringify(analyseData, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

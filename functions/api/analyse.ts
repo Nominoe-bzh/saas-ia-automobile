@@ -54,6 +54,46 @@ const AnalyseResultSchema = z.object({
   }),
 })
 
+// Définition textuelle très explicite de la structure attendue
+const SCHEMA_DESCRIPTION = `
+{
+  "fiche": {
+    "titre": "string",
+    "marque": "string | null",
+    "modele": "string | null",
+    "motorisation": "string | null",
+    "energie": "string | null",
+    "annee": "string | null",
+    "kilometrage": "string | null",
+    "prix": "string | null",
+    "boite": "string | null",
+    "carrosserie": "string | null",
+    "finition": "string | null",
+    "puissance": "string | null",
+    "ct": "string | null",
+    "historique": "string | null"
+  },
+  "risques": [
+    {
+      "type": "mecanique | administratif | financier | arnaque | inconnu",
+      "niveau": "faible | modéré | élevé | critique",
+      "detail": "string",
+      "recommandation": "string"
+    }
+  ],
+  "score_global": {
+    "note_sur_100": number,
+    "resume": "string",
+    "profil_achat": "bonne_opportunite | à_negocier | à_eviter"
+  },
+  "avis_acheteur": {
+    "resume_simple": "string",
+    "questions_a_poser": ["string", "..."],
+    "points_a_verifier_essai": ["string", "..."]
+  }
+}
+`
+
 export async function onRequestPost(context: CFContext): Promise<Response> {
   try {
     const body = await context.request.json()
@@ -67,7 +107,6 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       )
     }
 
-    // Appel OpenAI REST
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -81,26 +120,22 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
           {
             role: 'system',
             content:
-              "Tu es un expert indépendant de l'automobile spécialisée dans l'achat de voitures d'occasion pour particuliers français. " +
-              "Ton rôle : analyser des annonces et produire un avis structuré, pédagogique et prudent.",
+              "Tu es un expert indépendant de l'automobile, spécialisé dans l'achat de voitures d'occasion pour des particuliers français. " +
+              "Tu dois produire un avis structuré, pédagogique et prudent, sans jamais inventer des infos absentes de l'annonce.",
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text:
-                  "Analyse cette annonce de voiture d'occasion. " +
-                  "Retourne UNIQUEMENT un JSON valide qui respecte exactement ce schéma :\n\n" +
-                  AnalyseResultSchema.toString() +
-                  "\n\n" +
-                  "N'ajoute aucun texte avant ou après le JSON. Pas de commentaires, pas de balises, rien d'autre.",
-              },
-              {
-                type: 'text',
-                text: `Texte de l'annonce :\n${annonce}`,
-              },
-            ],
+            content:
+              "Analyse cette annonce de voiture d'occasion.\n\n" +
+              "1/ Lis attentivement le texte.\n" +
+              "2/ Déduis uniquement ce qui est explicitement mentionné ou extrêmement probable.\n" +
+              "3/ Retourne UNIQUEMENT un JSON valide UTF-8, sans aucun texte avant ou après.\n" +
+              "4/ Le JSON DOIT avoir exactement la structure suivante (clés et types) :\n\n" +
+              SCHEMA_DESCRIPTION +
+              "\n\n" +
+              "Ne mets pas de commentaires, pas de texte libre, pas de balises, pas de markdown. " +
+              "Si une information n'est pas présente dans l'annonce, mets null ou une chaîne courte comme \"inconnu\".\n\n" +
+              `Texte de l'annonce :\n${annonce}`,
           },
         ],
       }),
@@ -118,8 +153,8 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
     }
 
     const data = await openaiResponse.json()
-
     const content = data.choices?.[0]?.message?.content
+
     if (!content || typeof content !== 'string') {
       return new Response(
         JSON.stringify({ ok: false, error: 'openai: réponse vide ou inattendue' }),
@@ -127,7 +162,7 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       )
     }
 
-    // On tente de parser le JSON renvoyé
+    // 1) On parse le JSON brut
     let parsed: unknown
     try {
       parsed = JSON.parse(content)
@@ -142,8 +177,20 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       )
     }
 
-    // Validation stricte avec Zod
-    const result = AnalyseResultSchema.parse(parsed)
+    // 2) On valide avec Zod, en loggant les erreurs + le JSON si ça ne passe pas
+    let result
+    try {
+      result = AnalyseResultSchema.parse(parsed)
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: e?.errors ?? String(e),
+          raw: parsed,
+        }),
+        { status: 500 },
+      )
+    }
 
     return new Response(JSON.stringify({ ok: true, data: result }), {
       status: 200,

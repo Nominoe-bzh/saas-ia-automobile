@@ -1,24 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+declare global {
+  interface Window {
+    plausible?: (...args: any[]) => void
+  }
+}
 
-type WaitlistStatus = 'idle' | 'pending' | 'ok' | 'err'
-type AnalyseStatus = 'idle' | 'pending' | 'ok' | 'err'
+import { useState } from 'react'
 
 export default function Home() {
   // --- Etat formulaire liste d’attente ---
   const [email, setEmail] = useState('')
   const [prenom, setPrenom] = useState('')
   const [typeUser, setTypeUser] = useState('Particulier')
-  const [status, setStatus] = useState<WaitlistStatus>('idle')
+  const [status, setStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
 
-  // --- Etat test d’analyse ---
-  const [annonceTest, setAnnonceTest] = useState('')
-  const [analyseStatus, setAnalyseStatus] = useState<AnalyseStatus>('idle')
-  const [analyseData, setAnalyseData] = useState<any | null>(null)
-  const [analyseError, setAnalyseError] = useState<string | null>(null)
+  // --- Etat démo analyse ---
+  const [demoAnnonce, setDemoAnnonce] = useState(
+    "Clio 4 - 1.5 dCi 90 ch Zen, 2016, 120 000 km, diesel, CT OK, 8 000 euros, 1ère main, non fumeur, carnet à jour"
+  )
+  const [demoStatus, setDemoStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
+  const [demoResult, setDemoResult] = useState<any | null>(null)
 
-  // ------- Soumission liste d’attente (/api/join) -------
+  // --- Submit liste d’attente ---
   const submitWaitlist = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('pending')
@@ -26,11 +30,7 @@ export default function Home() {
       const res = await fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          prenom,
-          type_utilisateur: typeUser,
-        }),
+        body: JSON.stringify({ email, prenom, type_utilisateur: typeUser }),
       })
 
       if (!res.ok) {
@@ -43,52 +43,52 @@ export default function Home() {
       setPrenom('')
       setTypeUser('Particulier')
 
-        setTypeUser('Particulier')
-
-      if (typeof window !== 'undefined') {
-        const plausibleFn = (window as any).plausible as
-          | ((eventName: string, options?: any) => void)
-          | undefined
-
-        plausibleFn?.('Signup', {
+      if (typeof window !== 'undefined' && window.plausible) {
+        window.plausible('Signup', {
           props: {
             source: 'landing',
             role: typeUser,
           },
         })
       }
-    } catch {
+    } catch (err) {
+      console.error(err)
       setStatus('err')
     }
   }
 
-  // ------- Soumission test d’analyse (/api/analyse) -------
-  const submitAnalyse = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setAnalyseStatus('pending')
-    setAnalyseError(null)
-    setAnalyseData(null)
-
+  // --- Lancer une analyse démo ---
+  const runDemoAnalyse = async () => {
+    setDemoStatus('pending')
+    setDemoResult(null)
     try {
       const res = await fetch('/api/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ annonce: annonceTest }),
+        body: JSON.stringify({ annonce: demoAnnonce }),
       })
 
-      const json = await res.json().catch(() => null)
+      const json = await res.json()
 
-      if (!res.ok || !json?.ok) {
-        setAnalyseStatus('err')
-        setAnalyseError(json?.error ?? 'Erreur lors de l’analyse')
+      if (!res.ok || !json.ok) {
+        console.error(json)
+        setDemoStatus('err')
         return
       }
 
-      setAnalyseStatus('ok')
-      setAnalyseData(json.analyse)
-    } catch (err: any) {
-      setAnalyseStatus('err')
-      setAnalyseError(err?.message ?? 'Erreur réseau')
+      setDemoResult(json.data)
+      setDemoStatus('ok')
+
+      if (typeof window !== 'undefined' && window.plausible) {
+        window.plausible('DemoAnalyse', {
+          props: {
+            source: 'landing',
+          },
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      setDemoStatus('err')
     }
   }
 
@@ -115,7 +115,7 @@ export default function Home() {
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Négociation assistée</h3>
           <p className="text-sm text-gray-600 mt-2">
-            Arguments chiffrés basés sur marché et historique.
+            Arguments chiffrés basés sur le marché et l’historique.
           </p>
         </div>
         <div className="rounded-2xl border p-6">
@@ -133,12 +133,10 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Signup liste d’attente */}
+      {/* Signup waitlist */}
       <section className="px-6 py-12 max-w-xl mx-auto">
         <div className="rounded-2xl border p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-center">
-            Rejoindre la liste d’attente
-          </h2>
+          <h2 className="text-xl font-semibold text-center">Rejoindre la liste d’attente</h2>
           <form onSubmit={submitWaitlist} className="mt-6 space-y-4">
             <div>
               <label className="block text-sm font-medium">Prénom</label>
@@ -198,92 +196,168 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Bloc test d’analyse (mode démo) */}
-      <section className="px-6 pb-16 max-w-3xl mx-auto">
-        <div className="rounded-2xl border p-6 bg-gray-50">
-          <h2 className="text-lg font-semibold text-center">
-            Tester une analyse (démo)
-          </h2>
-          <p className="text-xs text-gray-500 text-center mt-1">
-            Pour le moment, l’analyse est générée en mode démonstration (fallback),
-            le temps d’activer le budget IA OpenAI.
-          </p>
-
-          <form onSubmit={submitAnalyse} className="mt-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium">
-                Collez ici une annonce de voiture d’occasion
-              </label>
-              <textarea
-                className="mt-1 w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-black min-h-[120px]"
-                value={annonceTest}
-                onChange={(e) => setAnnonceTest(e.target.value)}
-                placeholder="Ex : Clio 4 - 1.5 dCi 90 ch Zen, 2016, 120 000 km, diesel, CT OK, 8 000 €..."
-                required
-              />
-            </div>
-
+      {/* Bloc démo analyse IA */}
+      <section className="px-6 pb-16 max-w-5xl mx-auto">
+        <div className="grid gap-6 md:grid-cols-2 items-start">
+          {/* Colonne gauche : saisie annonce */}
+          <div className="rounded-2xl border p-6">
+            <h2 className="text-lg font-semibold mb-2">Analyse démo d’une annonce</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Collez une annonce de voiture d’occasion (Leboncoin, La Centrale, etc.) et lancez une
+              analyse IA.
+            </p>
+            <textarea
+              className="w-full min-h-[140px] rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+              value={demoAnnonce}
+              onChange={(e) => setDemoAnnonce(e.target.value)}
+            />
             <button
-              type="submit"
-              disabled={analyseStatus === 'pending'}
-              className="w-full rounded-md bg-black text-white py-2 font-semibold hover:opacity-90 disabled:opacity-60"
+              onClick={runDemoAnalyse}
+              disabled={demoStatus === 'pending'}
+              className="mt-4 w-full rounded-md bg-black text-white py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
             >
-              {analyseStatus === 'pending'
-                ? 'Analyse en cours…'
-                : 'Lancer une analyse (démo)'}
+              {demoStatus === 'pending' ? 'Analyse en cours…' : 'Lancer une analyse démo'}
             </button>
-          </form>
+            {demoStatus === 'err' && (
+              <p className="mt-2 text-sm text-red-700">
+                Erreur lors de l’analyse. Réessayez dans quelques instants.
+              </p>
+            )}
+          </div>
 
-          {/* Affichage des résultats */}
-          <div className="mt-6">
-            {analyseStatus === 'err' && (
-              <p className="text-sm text-red-700 text-center">
-                {analyseError ?? 'Erreur lors de l’analyse.'}
+          {/* Colonne droite : résultat */}
+          <div className="rounded-2xl border p-6 bg-gray-50">
+            <h3 className="text-sm font-semibold mb-3 text-gray-800">Résultat d’analyse</h3>
+
+            {demoStatus === 'idle' && (
+              <p className="text-sm text-gray-500">
+                Lancez une analyse pour voir la fiche synthétique, les risques détectés et un score
+                global sur 100.
               </p>
             )}
 
-            {analyseStatus === 'ok' && analyseData && (
-              <div className="space-y-4 text-sm text-left">
-                <div className="rounded-xl border bg-white p-4">
-                  <h3 className="font-semibold">Score & avis</h3>
-                  <p className="mt-1">
-                    <span className="font-medium">Score global :</span>{' '}
-                    {analyseData.score_global}/100
+            {demoStatus === 'pending' && (
+              <p className="text-sm text-gray-600">Analyse IA en cours…</p>
+            )}
+
+            {demoStatus === 'ok' && demoResult && (
+              <div className="space-y-4 text-sm text-gray-800">
+                {/* Fiche véhicule */}
+                <div>
+                  <h4 className="font-semibold mb-1">Fiche véhicule</h4>
+                  <ul className="text-xs md:text-sm space-y-0.5">
+                    {demoResult.fiche?.titre && (
+                      <li>
+                        <span className="font-medium">Titre :</span> {demoResult.fiche.titre}
+                      </li>
+                    )}
+                    <li>
+                      <span className="font-medium">Marque / modèle :</span>{' '}
+                      {[demoResult.fiche?.marque, demoResult.fiche?.modele]
+                        .filter(Boolean)
+                        .join(' ')}
+                    </li>
+                    <li>
+                      <span className="font-medium">Motorisation :</span>{' '}
+                      {demoResult.fiche?.motorisation || '—'}
+                    </li>
+                    <li>
+                      <span className="font-medium">Année :</span>{' '}
+                      {demoResult.fiche?.annee || '—'}
+                    </li>
+                    <li>
+                      <span className="font-medium">Kilométrage :</span>{' '}
+                      {demoResult.fiche?.kilometrage || '—'}
+                    </li>
+                    <li>
+                      <span className="font-medium">Prix :</span>{' '}
+                      {demoResult.fiche?.prix || '—'}
+                    </li>
+                    <li>
+                      <span className="font-medium">Énergie :</span>{' '}
+                      {demoResult.fiche?.energie || '—'}
+                    </li>
+                    <li>
+                      <span className="font-medium">Finition :</span>{' '}
+                      {demoResult.fiche?.finition || '—'}
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Score global */}
+                <div>
+                  <h4 className="font-semibold mb-1">Score global</h4>
+                  <p>
+                    <span className="font-medium">
+                      {demoResult.score_global?.note_sur_100 ?? '—'}/100
+                    </span>
                   </p>
-                  <p className="mt-1">
-                    <span className="font-medium">Recommandation :</span>{' '}
-                    {analyseData.avis?.recommandation}
+                  <p className="text-xs md:text-sm text-gray-700 mt-1">
+                    {demoResult.score_global?.resume}
                   </p>
-                  <p className="mt-1 text-gray-700">
-                    {analyseData.avis?.resume}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Profil d’achat :{' '}
+                    <span className="font-medium">
+                      {demoResult.score_global?.profil_achat || '—'}
+                    </span>
                   </p>
                 </div>
 
-                {Array.isArray(analyseData.risques) &&
-                  analyseData.risques.length > 0 && (
-                    <div className="rounded-xl border bg-white p-4">
-                      <h3 className="font-semibold">Principaux risques</h3>
-                      <ul className="mt-2 list-disc list-inside space-y-1">
-                        {analyseData.risques.map((r: any, idx: number) => (
-                          <li key={idx}>
-                            <span className="font-medium">
-                              [{r.niveau.toUpperCase()}] {r.type} :
-                            </span>{' '}
-                            {r.detail}
-                          </li>
-                        ))}
+                {/* Risques */}
+                <div>
+                  <h4 className="font-semibold mb-1">Risques détectés</h4>
+                  {demoResult.risques && demoResult.risques.length > 0 ? (
+                    <ul className="list-disc list-inside space-y-1 text-xs md:text-sm">
+                      {demoResult.risques.map((r: any, idx: number) => (
+                        <li key={idx}>
+                          <span className="font-medium">
+                            [{r.niveau?.toUpperCase() || '—'}] {r.type || 'risque'}
+                            {': '}
+                          </span>
+                          {r.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-500">Aucun risque identifié.</p>
+                  )}
+                </div>
+
+                {/* Avis acheteur */}
+                <div>
+                  <h4 className="font-semibold mb-1">Avis acheteur</h4>
+                  <p className="text-xs md:text-sm text-gray-700 mb-1">
+                    {demoResult.avis_acheteur?.resume_simple}
+                  </p>
+                  {demoResult.avis_acheteur?.questions_a_poser && (
+                    <div className="mt-2">
+                      <p className="font-medium text-xs md:text-sm mb-1">
+                        Questions à poser au vendeur :
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-xs md:text-sm">
+                        {demoResult.avis_acheteur.questions_a_poser.map(
+                          (q: string, idx: number) => (
+                            <li key={idx}>{q}</li>
+                          )
+                        )}
                       </ul>
                     </div>
                   )}
-
-                <details className="rounded-xl border bg-white p-4">
-                  <summary className="cursor-pointer font-semibold">
-                    Voir le JSON complet (debug)
-                  </summary>
-                  <pre className="mt-2 text-xs overflow-x-auto">
-                    {JSON.stringify(analyseData, null, 2)}
-                  </pre>
-                </details>
+                  {demoResult.avis_acheteur?.points_a_verifier_essai && (
+                    <div className="mt-2">
+                      <p className="font-medium text-xs md:text-sm mb-1">
+                        Points à vérifier à l’essai :
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-xs md:text-sm">
+                        {demoResult.avis_acheteur.points_a_verifier_essai.map(
+                          (p: string, idx: number) => (
+                            <li key={idx}>{p}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

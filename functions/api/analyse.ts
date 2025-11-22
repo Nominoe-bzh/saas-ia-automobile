@@ -21,20 +21,20 @@ const AnalyseInputSchema = z.object({
 
 const AnalyseResultSchema = z.object({
   fiche: z.object({
-    titre: z.string(),
-    marque: z.string().optional(),
-    modele: z.string().optional(),
-    motorisation: z.string().optional(),
-    energie: z.string().optional(),
-    annee: z.string().optional(),
-    kilometrage: z.string().optional(),
-    prix: z.string().optional(),
-    boite: z.string().optional(),
-    carrosserie: z.string().optional(),
-    finition: z.string().optional(),
-    puissance: z.string().optional(),
-    ct: z.string().optional(),
-    historique: z.string().optional(),
+    titre: z.string().nullable().optional(),
+    marque: z.string().nullable().optional(),
+    modele: z.string().nullable().optional(),
+    motorisation: z.string().nullable().optional(),
+    energie: z.string().nullable().optional(),
+    annee: z.string().nullable().optional(),
+    kilometrage: z.string().nullable().optional(),
+    prix: z.string().nullable().optional(),
+    boite: z.string().nullable().optional(),
+    carrosserie: z.string().nullable().optional(),
+    finition: z.string().nullable().optional(),
+    puissance: z.string().nullable().optional(),
+    ct: z.string().nullable().optional(),
+    historique: z.string().nullable().optional(),
   }),
   risques: z.array(z.object({
     type: z.enum(['mecanique', 'administratif', 'financier', 'arnaque', 'inconnu']),
@@ -53,6 +53,7 @@ const AnalyseResultSchema = z.object({
     points_a_verifier_essai: z.array(z.string()),
   }),
 })
+
 
 // Définition textuelle très explicite de la structure attendue
 const SCHEMA_DESCRIPTION = `

@@ -11,6 +11,7 @@ export default function Home() {
   const [status, setStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
 
   // --- Etat démo analyse IA ---
+  const [demoEmail, setDemoEmail] = useState('')
   const [demoAnnonce, setDemoAnnonce] = useState('')
   const [demoStatus, setDemoStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
   const [demoResult, setDemoResult] = useState<any | null>(null)
@@ -72,7 +73,7 @@ export default function Home() {
       const res = await fetch('/api/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ annonce: demoAnnonce }),
+        body: JSON.stringify({annonce: demoAnnonce,email: demoEmail || null,}),
       })
 
       let json: any = null
@@ -257,6 +258,14 @@ export default function Home() {
               placeholder="Exemple : Clio 4 - 1.5 dCi 90 ch Zen, 2016, 120 000 km, diesel, CT OK, 8 000 €, 1ère main, non fumeur, carnet à jour…"
               value={demoAnnonce}
               onChange={(e) => setDemoAnnonce(e.target.value)}
+            />
+
+            <input
+            type="email"
+            className="w-full rounded-md border px-3 py-2 text-sm"
+            placeholder="Ton email (optionnel, pour recevoir le rapport)"
+            value={demoEmail}
+            onChange={(e) => setDemoEmail(e.target.value)}
             />
 
             <button

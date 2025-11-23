@@ -22,7 +22,9 @@ const AnalyseInputSchema = z.object({
   annonce: z
     .string()
     .min(30, "Texte d'annonce trop court, donne l'annonce complète pour une analyse utile."),
+  email: z.string().email().optional().nullable(),
 })
+
 
 const FicheSchema = z.object({
   titre: z.string(),
@@ -158,7 +160,7 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
   try {
     // 1) Lecture et validation de l'entrée
     const body = await context.request.json()
-    const { annonce } = AnalyseInputSchema.parse(body)
+    const { annonce, email } = AnalyseInputSchema.parse(body)
 
     // 2) Appel OpenAI
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -239,7 +241,7 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       const supabase = createClient(context.env.SUPABASE_URL, context.env.SUPABASE_ANON_KEY)
 
       await supabase.from('analyses').insert({
-        email: null,
+        email: email ?? null,
         input_raw: annonce,
         output_json: result,
         model: OPENAI_MODEL,

@@ -6,6 +6,8 @@ type EnvBindings = {
   OPENAI_API_KEY: string
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
+  RESEND_API_KEY: string
+  MAIL_FROM: string                // ← ajouté
 }
 
 // Contexte Cloudflare Pages
@@ -132,6 +134,60 @@ RÔLE :
 Ne commente pas, ne rajoute pas de texte hors du JSON.
 `
 
+async function sendAnalyseEmail(env: EnvBindings, to: string, result: any) {
+  const titre = result?.fiche?.titre ?? 'votre véhicule'
+  const note = result?.score_global?.note_sur_100 ?? 0
+  const resume = result?.score_global?.resume ?? ''
+  const profil = result?.score_global?.profil_achat ?? ''
+  const questions: string[] = result?.avis_acheteur?.questions_a_poser ?? []
+  const pointsEssai: string[] = result?.avis_acheteur?.points_a_verifier_essai ?? []
+
+  const subject = `Analyse de votre annonce : ${titre}`
+
+  const lines: string[] = []
+
+  lines.push(`Résumé : ${resume}`)
+  lines.push(`Note globale : ${note}/100`)
+  lines.push(`Profil d'achat : ${profil}`)
+  lines.push('')
+  if (questions.length) {
+    lines.push('Questions à poser au vendeur :')
+    for (const q of questions) {
+      lines.push(`- ${q}`)
+    }
+    lines.push('')
+  }
+  if (pointsEssai.length) {
+    lines.push('Points à vérifier lors de l’essai :')
+    for (const p of pointsEssai) {
+      lines.push(`- ${p}`)
+    }
+    lines.push('')
+  }
+
+  const text = lines.join('\n')
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: env.MAIL_FROM,
+      to: [to],
+      subject,
+      text,
+    }),
+  })
+
+  if (!res.ok) {
+    const errTxt = await res.text().catch(() => '')
+    console.error('Resend analyse email error', res.status, errTxt)
+  }
+}
+
+
 // --------- Helper pour parser le JSON du modèle ---------
 
 function extractJsonFromContent(content: string): unknown {
@@ -252,7 +308,18 @@ export async function onRequestPost(context: CFContext): Promise<Response> {
       console.error('supabase insert error', e)
     }
 
-    // 5) Réponse HTTP
+    // 5) Email récap si email fourni
+    if (email) {
+      try {
+        await sendAnalyseEmail(context.env, email, result)
+      } catch (e) {
+        console.error('sendAnalyseEmail error', e)
+      }
+    }
+
+
+
+    // 6) Réponse HTTP
     return new Response(JSON.stringify({ ok: true, data: result }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

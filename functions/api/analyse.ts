@@ -137,19 +137,43 @@ Ne commente pas, ne rajoute pas de texte hors du JSON.
 async function sendAnalyseEmail(env: EnvBindings, to: string, result: any) {
   const titre = result?.fiche?.titre ?? 'votre véhicule'
   const note = result?.score_global?.note_sur_100 ?? 0
-  const resume = result?.score_global?.resume ?? ''
+  const resumeSimple = result?.avis_acheteur?.resume_simple ?? ''
+  const resumeDetaille = result?.score_global?.resume ?? ''
   const profil = result?.score_global?.profil_achat ?? ''
   const questions: string[] = result?.avis_acheteur?.questions_a_poser ?? []
   const pointsEssai: string[] = result?.avis_acheteur?.points_a_verifier_essai ?? []
+  const risques: { type?: string; niveau?: string; detail?: string }[] = result?.risques ?? []
 
   const subject = `Analyse de votre annonce : ${titre}`
 
   const lines: string[] = []
 
-  lines.push(`Résumé : ${resume}`)
+  // même “ton” que la synthèse du site
+  if (resumeSimple) {
+    lines.push(`Synthèse rapide : ${resumeSimple}`)
+    lines.push('')
+  }
+
+  if (resumeDetaille) {
+    lines.push(`Synthèse détaillée : ${resumeDetaille}`)
+    lines.push('')
+  }
+
   lines.push(`Note globale : ${note}/100`)
   lines.push(`Profil d'achat : ${profil}`)
   lines.push('')
+
+  if (risques.length) {
+    lines.push('Risques identifiés :')
+    for (const r of risques) {
+      const type = r.type ?? 'Risque'
+      const niveau = r.niveau ?? ''
+      const detail = r.detail ?? ''
+      lines.push(`- ${type} ${niveau ? `– ${niveau}` : ''} : ${detail}`)
+    }
+    lines.push('')
+  }
+
   if (questions.length) {
     lines.push('Questions à poser au vendeur :')
     for (const q of questions) {
@@ -157,8 +181,9 @@ async function sendAnalyseEmail(env: EnvBindings, to: string, result: any) {
     }
     lines.push('')
   }
+
   if (pointsEssai.length) {
-    lines.push('Points à vérifier lors de l’essai :')
+    lines.push("Points à vérifier lors de l’essai :")
     for (const p of pointsEssai) {
       lines.push(`- ${p}`)
     }
@@ -186,6 +211,7 @@ async function sendAnalyseEmail(env: EnvBindings, to: string, result: any) {
     console.error('Resend analyse email error', res.status, errTxt)
   }
 }
+
 
 
 // --------- Helper pour parser le JSON du modèle ---------

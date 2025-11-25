@@ -1,13 +1,54 @@
 // functions/api/analyse.ts
+
+import { z } from 'zod'
+
+// ---------- ZOD SCHEMAS ----------
+
+const AnalyseRequestSchema = z.object({
+  annonce: z.string().min(20, "L'annonce est trop courte"),
+  email: z.string().email().optional().nullable(),
+})
+
+// ---------- HANDLER CLOUDLFARE PAGES ----------
+
 export const onRequestPost = async (context: any): Promise<Response> => {
   try {
-    const bodyText = await context.request.text().catch(() => '')
+    const { request } = context
+
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'invalid_json' }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    const parsed = AnalyseRequestSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'invalid_request',
+          details: parsed.error.format(),
+        }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
 
     return new Response(
       JSON.stringify({
         ok: true,
-        message: 'analyse stub OK',
-        received: bodyText,
+        message: 'analyse zod OK',
+        data: parsed.data,
       }),
       {
         status: 200,
@@ -18,7 +59,7 @@ export const onRequestPost = async (context: any): Promise<Response> => {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: 'internal_error_stub',
+        error: 'internal_error_stepA',
         details: e?.message ?? String(e),
       }),
       {

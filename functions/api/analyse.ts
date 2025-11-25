@@ -1,25 +1,8 @@
 // functions/api/analyse.ts
+
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
-type EnvBindings = {
-  OPENAI_API_KEY: string
-  SUPABASE_URL: string
-  SUPABASE_ANON_KEY: string
-  RESEND_API_KEY: string
-  MAIL_FROM: string
-}
-
-// Contexte Cloudflare Pages
-type CFContext = {
-  env: EnvBindings
-  request: Request
-}
-
-/**
- * Modèle utilisé côté OpenAI
- */
 const OPENAI_MODEL = 'gpt-4.1-mini'
 
 // ---------- ZOD SCHEMAS ----------
@@ -68,7 +51,7 @@ const AnalyseResultSchema = z.object({
 
 type AnalyseResult = z.infer<typeof AnalyseResultSchema>
 
-// Description textuelle du JSON attendu (pour guider le modèle)
+// Description JSON pour guider le modèle
 const SCHEMA_DESCRIPTION = `
 {
   "fiche": {
@@ -112,26 +95,20 @@ const SCHEMA_DESCRIPTION = `
 
 const FREE_DEMO_LIMIT = 3
 
-type QuotaTarget = {
-  email?: string | null
-  ip: string | null
-}
-
 async function checkAndIncrementDemoQuota(
-  supabase: SupabaseClient,
-  target: QuotaTarget,
+  supabase: any,
+  target: { email?: string | null; ip: string | null },
 ): Promise<{ allowed: boolean }> {
   const { email, ip } = target
 
-  // Si ni email ni IP, on ne bloque pas
   if (!email && !ip) {
+    // pas d’info → on ne bloque pas
     return { allowed: true }
   }
 
   const filterColumn = email ? 'email' : 'ip_hash'
   const filterValue = email ?? ip!
 
-  // Ligne existante ?
   const { data, error } = await supabase
     .from('demo_quota')
     .select('id, count')
@@ -140,11 +117,9 @@ async function checkAndIncrementDemoQuota(
 
   if (error) {
     console.error('Error reading demo_quota', error)
-    // On préfère laisser passer plutôt que tout casser
     return { allowed: true }
   }
 
-  // Aucune ligne -> on en crée une avec count = 1
   if (!data) {
     const { error: insertError } = await supabase.from('demo_quota').insert({
       email: email ?? null,
@@ -159,12 +134,10 @@ async function checkAndIncrementDemoQuota(
     return { allowed: true }
   }
 
-  // Déjà au max
   if (data.count >= FREE_DEMO_LIMIT) {
     return { allowed: false }
   }
 
-  // Incrément
   const { error: updateError } = await supabase
     .from('demo_quota')
     .update({
@@ -182,7 +155,11 @@ async function checkAndIncrementDemoQuota(
 
 // ---------- OPENAI ----------
 
-async function callOpenAI(env: EnvBindings, annonce: string): Promise<AnalyseResult> {
+async function callOpenAI(env: any, annonce: string): Promise<AnalyseResult> {
+  if (!env.OPENAI_API_KEY) {
+    throw new Error('missing_env_OPENAI_API_KEY')
+  }
+
   const systemPrompt =
     "Tu es un expert en véhicules d'occasion. " +
     "Tu analyses une annonce auto pour un particulier français. " +
@@ -237,7 +214,7 @@ async function callOpenAI(env: EnvBindings, annonce: string): Promise<AnalyseRes
         if (raw) break
       }
     } catch (e) {
-      // ignore, on gère plus bas
+      // ignore
     }
   }
 
@@ -264,11 +241,12 @@ async function callOpenAI(env: EnvBindings, annonce: string): Promise<AnalyseRes
 
 // ---------- EMAIL VIA RESEND ----------
 
-async function sendAnalysisEmail(
-  env: EnvBindings,
-  toEmail: string,
-  result: AnalyseResult,
-): Promise<void> {
+async function sendAnalysisEmail(env: any, toEmail: string, result: AnalyseResult) {
+  if (!env.RESEND_API_KEY || !env.MAIL_FROM) {
+    console.error('Missing RESEND_API_KEY or MAIL_FROM, skip email')
+    return
+  }
+
   const { fiche, score_global, avis_acheteur } = result
 
   const subject = `Analyse de votre annonce : ${fiche.titre}`
@@ -315,113 +293,128 @@ async function sendAnalysisEmail(
 
 // ---------- HANDLER CLOUDLFARE PAGES ----------
 
-export const onRequestPost = async (context: CFContext): Promise<Response> => {
-  const { env, request } = context
-
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
-
-  let body: unknown
+export const onRequestPost = async (context: any): Promise<Response> => {
   try {
-    body = await request.json()
-  } catch {
-    return new Response(
-      JSON.stringify({ ok: false, error: 'invalid_json' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
+    const { env, request } = context
 
-  const parsed = AnalyseRequestSchema.safeParse(body)
-  if (!parsed.success) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: 'invalid_request',
-        details: parsed.error.format(),
-      }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
 
-  const { annonce, email } = parsed.data
+    let body: unknown
+    try {
+      body = await request.json()
+    } catch {
+      return new Response(JSON.stringify({ ok: false, error: 'invalid_json' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
 
-  // IP pour le quota
-  const ip =
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('x-forwarded-for') ??
-    null
-
-  // Quota démo (3 analyses gratuites)
-  try {
-    const quota = await checkAndIncrementDemoQuota(supabase, {
-      email: email ?? null,
-      ip,
-    })
-
-    if (!quota.allowed) {
+    const parsed = AnalyseRequestSchema.safeParse(body)
+    if (!parsed.success) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'QUOTA_EXCEEDED',
+          error: 'invalid_request',
+          details: parsed.error.format(),
         }),
         {
-          status: 429,
+          status: 400,
           headers: { 'Content-Type': 'application/json' },
         },
       )
     }
-  } catch (e) {
-    console.error('Quota error', e)
-    // En cas d’erreur, on ne bloque pas l’analyse
-  }
 
-  const started = Date.now()
-  let result: AnalyseResult | null = null
-  let errorMessage: string | null = null
+    const { annonce, email } = parsed.data
 
-  try {
-    result = await callOpenAI(env, annonce)
-  } catch (e: any) {
-    errorMessage = e?.message ?? 'openai_error'
-  }
+    const ip =
+      request.headers.get('CF-Connecting-IP') ??
+      request.headers.get('x-forwarded-for') ??
+      null
 
-  const durationMs = Date.now() - started
+    // Quota démo (3 analyses gratuites)
+    try {
+      const quota = await checkAndIncrementDemoQuota(supabase, {
+        email: email ?? null,
+        ip,
+      })
 
-  // Log en base (ne casse pas la réponse en cas d’erreur)
-  try {
-    await supabase.from('analyses').insert({
-      email: email ?? null,
-      input_raw: annonce,
-      output_json: result,
-      duration_ms: durationMs,
-      error: errorMessage,
-      model: OPENAI_MODEL,
+      if (!quota.allowed) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: 'QUOTA_EXCEEDED',
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+    } catch (e) {
+      console.error('Quota error', e)
+      // on laisse passer en cas d’erreur de quota
+    }
+
+    const started = Date.now()
+    let result: AnalyseResult | null = null
+    let errorMessage: string | null = null
+
+    try {
+      result = await callOpenAI(env, annonce)
+    } catch (e: any) {
+      errorMessage = e?.message ?? 'openai_error'
+    }
+
+    const durationMs = Date.now() - started
+
+    // Log en base
+    try {
+      await supabase.from('analyses').insert({
+        email: email ?? null,
+        input_raw: annonce,
+        output_json: result,
+        duration_ms: durationMs,
+        error: errorMessage,
+        model: OPENAI_MODEL,
+      })
+    } catch (e) {
+      console.error('Supabase insert error', e)
+    }
+
+    if (!result) {
+      return new Response(
+        JSON.stringify({ ok: false, error: errorMessage ?? 'openai_error' }),
+        {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    if (email) {
+      try {
+        await sendAnalysisEmail(env, email, result)
+      } catch (e) {
+        console.error('sendAnalysisEmail error', e)
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, data: result }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     })
-  } catch (e) {
-    console.error('Supabase insert error', e)
-  }
-
-  if (!result) {
+  } catch (e: any) {
+    console.error('UNHANDLED ERROR in /api/analyse', e)
     return new Response(
-      JSON.stringify({ ok: false, error: errorMessage ?? 'openai_error' }),
+      JSON.stringify({
+        ok: false,
+        error: 'internal_error',
+        details: e?.message ?? String(e),
+      }),
       {
-        status: 502,
+        status: 500,
         headers: { 'Content-Type': 'application/json' },
       },
     )
   }
-
-  // Envoi email si demandé
-  if (email) {
-    try {
-      await sendAnalysisEmail(env, email, result)
-    } catch (e) {
-      console.error('sendAnalysisEmail error', e)
-      // On n’interrompt pas la réponse pour un problème d’email
-    }
-  }
-
-  return new Response(JSON.stringify({ ok: true, data: result }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  })
 }

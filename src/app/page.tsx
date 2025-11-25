@@ -16,6 +16,7 @@ export default function Home() {
   const [demoStatus, setDemoStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
   const [demoResult, setDemoResult] = useState<any | null>(null)
   const [demoError, setDemoError] = useState<string | null>(null)
+  const [demoQuota, setDemoQuota] = useState<{ count: number; limit: number } | null>(null)
 
   // ============ Formulaire liste d’attente ============
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,34 +69,82 @@ export default function Home() {
     setDemoStatus('pending')
     setDemoError(null)
     setDemoResult(null)
+    setDemoQuota(null)
 
     try {
       const res = await fetch('/api/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({annonce: demoAnnonce,email: demoEmail || null,}),
+        body: JSON.stringify({
+          annonce: demoAnnonce,
+          email: demoEmail || null,
+        }),
       })
 
       let json: any = null
       try {
         json = await res.json()
       } catch {
-        // Réponse non JSON : on traitera comme une erreur générique
+        json = null
       }
 
-      if (!res.ok || !json || json.ok === false) {
+      // Gestion spécifique du quota dépassé (HTTP non OK)
+      if (!res.ok) {
+        if (json?.error === 'QUOTA_EXCEEDED') {
+          setDemoError(
+            "Vous avez utilisé vos 3 analyses gratuites avec cet email. " +
+              "Les prochaines analyses seront réservées aux comptes payants (bientôt disponible).",
+          )
+
+          if (
+            typeof json.quota_count === 'number' &&
+            typeof json.quota_limit === 'number'
+          ) {
+            setDemoQuota({ count: json.quota_count, limit: json.quota_limit })
+          }
+
+          setDemoStatus('err')
+          return
+        }
+
         const msg =
-          json?.error ||
-          (res.status === 429
+          res.status === 429
             ? "Trop de requêtes d’analyse pour le moment. Réessaie dans quelques minutes."
-            : `Erreur technique côté serveur (code ${res.status}). Réessaie plus tard.`)
+            : `Erreur technique côté serveur (code ${res.status}). Réessaie plus tard.`
 
         setDemoError(msg)
         setDemoStatus('err')
         return
       }
 
-      // Compatibilité : /api/analyse peut renvoyer { data: ... } ou { analyse: ... }
+      // Réponse JSON invalide ou ok=false
+      if (!json || json.ok === false) {
+        if (json?.error === 'QUOTA_EXCEEDED') {
+          setDemoError(
+            "Vous avez utilisé vos 3 analyses gratuites avec cet email. " +
+              "Les prochaines analyses seront réservées aux comptes payants (bientôt disponible).",
+          )
+
+          if (
+            typeof json.quota_count === 'number' &&
+            typeof json.quota_limit === 'number'
+          ) {
+            setDemoQuota({ count: json.quota_count, limit: json.quota_limit })
+          }
+
+          setDemoStatus('err')
+          return
+        }
+
+        const msg =
+          json?.error ??
+          "Erreur lors de l’analyse : l’analyse n’a pas pu aboutir. Réessaie dans quelques instants."
+        setDemoError(msg)
+        setDemoStatus('err')
+        return
+      }
+
+      // Succès → compatibilité : { data: ... } ou { analyse: ... }
       const analyse = json.data || json.analyse || null
       if (!analyse) {
         setDemoError("La réponse de l’IA est vide ou invalide. Réessaie avec une autre annonce.")
@@ -105,9 +154,19 @@ export default function Home() {
 
       setDemoResult(analyse)
       setDemoStatus('ok')
+
+      // Récupération des infos de quota si présentes
+      if (json.quota && typeof json.quota.count === 'number' && typeof json.quota.limit === 'number') {
+        setDemoQuota({ count: json.quota.count, limit: json.quota.limit })
+      } else if (
+        typeof json.quota_count === 'number' &&
+        typeof json.quota_limit === 'number'
+      ) {
+        setDemoQuota({ count: json.quota_count, limit: json.quota_limit })
+      }
     } catch {
       setDemoError(
-        "Impossible de joindre le serveur. Vérifie ta connexion Internet et réessaie dans quelques instants."
+        "Impossible de joindre le serveur. Vérifie ta connexion Internet et réessaie dans quelques instants.",
       )
       setDemoStatus('err')
     }
@@ -261,11 +320,11 @@ export default function Home() {
             />
 
             <input
-            type="email"
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Ton email (optionnel, pour recevoir le rapport)"
-            value={demoEmail}
-            onChange={(e) => setDemoEmail(e.target.value)}
+              type="email"
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Ton email (optionnel, pour recevoir le rapport)"
+              value={demoEmail}
+              onChange={(e) => setDemoEmail(e.target.value)}
             />
 
             <button
@@ -276,6 +335,12 @@ export default function Home() {
             >
               {demoStatus === 'pending' ? 'Analyse en cours…' : 'Analyser avec l’IA'}
             </button>
+
+            {demoQuota && (
+              <p className="text-xs text-gray-500 mt-1">
+                Analyses gratuites utilisées : {demoQuota.count} / {demoQuota.limit}
+              </p>
+            )}
 
             {demoStatus === 'pending' && !demoError && (
               <p className="mt-2 text-sm text-gray-500">
@@ -297,7 +362,7 @@ export default function Home() {
               <div>
                 <h3 className="font-semibold mb-1">Synthèse rapide</h3>
                 <p className="text-gray-700">
-                  {recommendation || "Analyse disponible ci-dessous."}
+                  {recommendation || 'Analyse disponible ci-dessous.'}
                 </p>
               </div>
 
@@ -310,12 +375,7 @@ export default function Home() {
                     .join(' ')}
                 </p>
                 <p className="text-gray-500">
-                  {[
-                    fiche.annee,
-                    fiche.kilometrage,
-                    fiche.energie,
-                    fiche.prix,
-                  ]
+                  {[fiche.annee, fiche.kilometrage, fiche.energie, fiche.prix]
                     .filter(Boolean)
                     .join(' • ')}
                 </p>
@@ -359,9 +419,11 @@ export default function Home() {
                     <div>
                       <h4 className="font-semibold mb-1">Questions à poser au vendeur</h4>
                       <ul className="list-disc pl-4 text-gray-700">
-                        {avis.questions_a_poser.slice(0, 5).map((q: string, idx: number) => (
-                          <li key={idx}>{q}</li>
-                        ))}
+                        {avis.questions_a_poser
+                          .slice(0, 5)
+                          .map((q: string, idx: number) => (
+                            <li key={idx}>{q}</li>
+                          ))}
                       </ul>
                     </div>
                   )}
@@ -369,9 +431,11 @@ export default function Home() {
                     <div>
                       <h4 className="font-semibold mb-1">Points à vérifier à l’essai</h4>
                       <ul className="list-disc pl-4 text-gray-700">
-                        {avis.points_a_verifier_essai.slice(0, 5).map((p: string, idx: number) => (
-                          <li key={idx}>{p}</li>
-                        ))}
+                        {avis.points_a_verifier_essai
+                          .slice(0, 5)
+                          .map((p: string, idx: number) => (
+                            <li key={idx}>{p}</li>
+                          ))}
                       </ul>
                     </div>
                   )}

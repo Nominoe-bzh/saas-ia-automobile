@@ -66,20 +66,24 @@ export default function Home() {
       return
     }
 
-    setDemoStatus('pending')
-    setDemoError(null)
-    setDemoResult(null)
-    setDemoQuota(null)
+      setDemoStatus('pending')
+      setDemoError(null)
+      // NE PAS vider demoResult ici pour garder le dernier rapport en cas d'erreur / quota
+      setDemoQuota(null)
 
     try {
-      const res = await fetch('/api/analyse', {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
+      const url = apiBase ? `${apiBase}/api/analyse` : '/api/analyse'
+
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           annonce: demoAnnonce,
           email: demoEmail || null,
-        }),
-      })
+  }),
+})
+
 
       let json: any = null
       try {

@@ -56,11 +56,11 @@ export const onRequest = async (context: {
 
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
 
-  // Requête EXACTEMENT alignée sur ta table "analyses"
+ // Requête plus tolérante : match email en insensible à la casse
   const { data, error } = await supabase
     .from('analyses')
     .select('id, created_at, email, input_raw, output_json')
-    .eq('email', email)
+    .ilike('email', `%${email}%`) // <-- au lieu de .eq('email', email)
     .order('created_at', { ascending: false })
     .limit(20)
 

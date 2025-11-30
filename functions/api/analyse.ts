@@ -286,6 +286,92 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     return jsonResponse({ ok: false, error: 'ANALYSE_LOG_ERROR' }, 500)
   }
 
+  // --- Envoi email (optionnel) ---
+  let emailSent = false
+
+  if (email) {
+    try {
+      const fiche = (analyse as any)?.fiche || {}
+      const score = (analyse as any)?.score_global || {}
+      const avis = (analyse as any)?.avis_acheteur || {}
+
+      const titre = fiche.titre || 'Votre analyse de véhicule'
+      const note = typeof score.note_sur_100 === 'number' ? `${score.note_sur_100}/100` : 'N/A'
+      const resume = avis.resume_simple || score.resume || 'Analyse IA de votre annonce.'
+
+      const questions: string[] = Array.isArray(avis.questions_a_poser)
+        ? avis.questions_a_poser.slice(0, 6)
+        : []
+      const pointsEssai: string[] = Array.isArray(avis.points_a_verifier_essai)
+        ? avis.points_a_verifier_essai.slice(0, 6)
+        : []
+
+      const lignes: string[] = []
+
+      lignes.push(`Résumé : ${resume}`)
+      lignes.push('')
+      lignes.push(`Note globale : ${note}`)
+      lignes.push('')
+
+      if (fiche.marque || fiche.modele || fiche.annee || fiche.kilometrage) {
+        lignes.push('Fiche véhicule :')
+        lignes.push(
+          `- ${[fiche.marque, fiche.modele, fiche.finition].filter(Boolean).join(' ')}`
+        )
+        lignes.push(
+          `- ${[fiche.annee, fiche.kilometrage, fiche.energie, fiche.prix]
+            .filter(Boolean)
+            .join(' • ')}`
+        )
+        lignes.push('')
+      }
+
+      if (questions.length > 0) {
+        lignes.push('Questions à poser au vendeur :')
+        for (const q of questions) {
+          lignes.push(`- ${q}`)
+        }
+        lignes.push('')
+      }
+
+      if (pointsEssai.length > 0) {
+        lignes.push("Points à vérifier lors de l’essai :")
+        for (const p of pointsEssai) {
+          lignes.push(`- ${p}`)
+        }
+        lignes.push('')
+      }
+
+      lignes.push(
+        "Cet email est généré par l’assistant IA Check Ton Véhicule à partir des informations fournies dans l’annonce."
+      )
+
+      const bodyText = lignes.join('\n')
+
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: env.MAIL_FROM,
+          to: email,
+          subject: `Analyse de votre annonce : ${titre}`,
+          text: bodyText,
+        }),
+      })
+
+      if (resendRes.ok) {
+        emailSent = true
+      }
+      // si non ok, on ignore : pas de throw pour ne pas casser l’API
+    } catch {
+      // en cas d'erreur d'email, on n'interrompt pas la réponse principale
+      emailSent = false
+    }
+  }
+
   return jsonResponse({
     ok: true,
     message: 'analyse IA OK',
@@ -294,5 +380,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       count: currentCount + 1,
       limit: MAX_DEMO,
     },
+    email_sent: emailSent,
   })
+
 }

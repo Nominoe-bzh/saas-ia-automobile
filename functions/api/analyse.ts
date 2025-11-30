@@ -1,196 +1,180 @@
-// functions/api/analyse.ts
-
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 
-// ---------- ZOD SCHEMAS ----------
-
-const AnalyseRequestSchema = z.object({
-  annonce: z.string().min(20, "L'annonce est trop courte"),
-  email: z.string().email().optional().nullable(),
-})
-
-// ---------- QUOTA DEMO (3 analyses gratuites) ----------
-
-const FREE_DEMO_LIMIT = 3
-
-async function checkAndIncrementDemoQuota(
-  supabase: any,
-  email?: string | null,
-  ip?: string | null,
-): Promise<{ allowed: boolean; count: number }> {
-  // Si ni email ni IP, on laisse passer et on ne log pas de quota
-  if (!email && !ip) {
-    return { allowed: true, count: 0 }
-  }
-
-  const filterColumn = email ? 'email' : 'ip_hash'
-  const filterValue = email ?? ip!
-
-  const { data, error } = await supabase
-    .from('demo_quota')
-    .select('id, count')
-    .eq(filterColumn, filterValue)
-    .maybeSingle()
-
-  if (error) {
-    console.error('Error reading demo_quota', error)
-    return { allowed: true, count: 0 }
-  }
-
-  // Pas encore de ligne → on crée avec count = 1
-  if (!data) {
-    const { error: insertError } = await supabase.from('demo_quota').insert({
-      email: email ?? null,
-      ip_hash: email ? null : filterValue,
-      count: 1,
-    })
-
-    if (insertError) {
-      console.error('Error inserting demo_quota', insertError)
-    }
-
-    return { allowed: true, count: 1 }
-  }
-
-  // Déjà au plafond
-  if (data.count >= FREE_DEMO_LIMIT) {
-    return { allowed: false, count: data.count }
-  }
-
-  const newCount = data.count + 1
-
-  const { error: updateError } = await supabase
-    .from('demo_quota')
-    .update({
-      count: newCount,
-      last_used_at: new Date().toISOString(),
-    })
-    .eq('id', data.id)
-
-  if (updateError) {
-    console.error('Error updating demo_quota', updateError)
-  }
-
-  return { allowed: true, count: newCount }
+type EnvBindings = {
+  SUPABASE_URL: string
+  SUPABASE_ANON_KEY: string
+  RESEND_API_KEY: string
+  MAIL_FROM: string
 }
 
-// ---------- HANDLER CLOUDLFARE PAGES ----------
+const analyseInputSchema = z.object({
+  annonce: z.string().min(10),
+  email: z.string().email().nullable().optional(),
+})
 
-export const onRequestPost = async (context: any): Promise<Response> => {
+const MAX_DEMO = 3
+
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*', // autorise localhost + prod
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
+    },
+  })
+}
+
+function getSupabase(env: EnvBindings) {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false },
+  })
+}
+
+export const onRequest: PagesFunction<EnvBindings> = async (context) => {
+  const { request, env } = context
+
+  // Préflight CORS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: CORS_HEADERS,
+    })
+  }
+
+  if (request.method !== 'POST') {
+    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
+  }
+
+  // --- Parse JSON ---
+  let payload: unknown
   try {
-    const { env, request } = context
+    payload = await request.json()
+  } catch {
+    return jsonResponse({ ok: false, error: 'INVALID_JSON' }, 400)
+  }
 
-    // Connexion Supabase
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
-
-    // Lecture du body JSON
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      return new Response(
-        JSON.stringify({ ok: false, error: 'invalid_json' }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    // Validation Zod
-    const parsed = AnalyseRequestSchema.safeParse(body)
-    if (!parsed.success) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          error: 'invalid_request',
-          details: parsed.error.format(),
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    const { annonce, email } = parsed.data
-
-    // IP pour quota
-    const ip =
-      request.headers.get('CF-Connecting-IP') ??
-      request.headers.get('x-forwarded-for') ??
-      null
-
-    // Quota démo
-    let quotaInfo: { allowed: boolean; count: number } = {
-      allowed: true,
-      count: 0,
-    }
-
-    try {
-      quotaInfo = await checkAndIncrementDemoQuota(supabase, email ?? null, ip)
-      if (!quotaInfo.allowed) {
-        return new Response(
-          JSON.stringify({
-            ok: false,
-            error: 'QUOTA_EXCEEDED',
-            quota_count: quotaInfo.count,
-            quota_limit: FREE_DEMO_LIMIT,
-          }),
-          {
-            status: 429,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        )
-      }
-    } catch (e) {
-      console.error('Quota error', e)
-      // On laisse passer en cas d’erreur de quota
-    }
-
-    // Log dans analyses (sans IA pour l’instant)
-    try {
-      await supabase.from('analyses').insert({
-        email: email ?? null,
-        input_raw: annonce,
-        output_json: null,
-        duration_ms: 0,
-        error: null,
-        model: 'stub-stepB',
-      })
-    } catch (e) {
-      console.error('Supabase insert error (analyses)', e)
-    }
-
-    // Réponse "stub" OK avec infos quota
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        message: 'analyse stepB (supabase + quota) OK',
-        data: parsed.data,
-        quota: {
-          count: quotaInfo.count,
-          limit: FREE_DEMO_LIMIT,
-        },
-      }),
+  const parsed = analyseInputSchema.safeParse(payload)
+  if (!parsed.success) {
+    return jsonResponse(
       {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    )
-  } catch (e: any) {
-    console.error('UNHANDLED ERROR in /api/analyse stepB', e)
-    return new Response(
-      JSON.stringify({
         ok: false,
-        error: 'internal_error_stepB',
-        details: e?.message ?? String(e),
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        error: 'INVALID_INPUT',
+        details: parsed.error.flatten(),
       },
+      400,
     )
   }
+
+  const { annonce, email } = parsed.data
+  const supabase = getSupabase(env)
+
+  // --- Gestion du quota ---
+  const quotaKey = email || 'no-email'
+  const { data: quotaRow, error: quotaError } = await supabase
+    .from('demo_quota')
+    .select('*')
+    .eq('email', quotaKey)
+    .maybeSingle()
+
+  if (quotaError && quotaError.code !== 'PGRST116') {
+    return jsonResponse({ ok: false, error: 'QUOTA_READ_ERROR' }, 500)
+  }
+
+  const currentCount = quotaRow?.count ?? 0
+  if (currentCount >= MAX_DEMO) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'QUOTA_EXCEEDED',
+        quota_count: currentCount,
+        quota_limit: MAX_DEMO,
+      },
+      429,
+    )
+  }
+
+  // Upsert du compteur
+  const { error: upsertError } = await supabase.from('demo_quota').upsert(
+    {
+      email: quotaKey,
+      count: currentCount + 1,
+    },
+    { onConflict: 'email' },
+  )
+
+  if (upsertError) {
+    return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
+  }
+
+  // --- Stub d’analyse (Step B : pas encore de vrai appel IA) ---
+  const analyseStub = {
+    fiche: {
+      titre: 'Exemple de rapport (démo)',
+      marque: 'Renault',
+      modele: 'Clio 4',
+      finition: 'Zen',
+      annee: '2016',
+      kilometrage: '120000',
+      energie: 'diesel',
+      prix: '8000',
+    },
+    risques: [
+      {
+        type: 'mécanique',
+        niveau: 'modéré',
+        detail:
+          'Démo uniquement : les risques réels seront calculés par l’IA sur la base de votre annonce.',
+        recommandation:
+          'La version complète évaluera l’entretien, le kilométrage et les faiblesses connues du modèle.',
+      },
+    ],
+    score_global: {
+      note_sur_100: 75,
+      resume:
+        "Rapport de démo. La version finale fournira un score détaillé adapté à votre annonce réelle.",
+      profil_achat: 'a_negocier',
+    },
+    avis_acheteur: {
+      resume_simple:
+        'Exemple de synthèse. La version finale donnera un avis personnalisé sur votre annonce.',
+      questions_a_poser: [
+        'Depuis combien de temps possédez-vous le véhicule ?',
+        'Pouvez-vous détailler l’entretien (factures, carnet) ?',
+      ],
+      points_a_verifier_essai: [
+        'Comportement général du moteur et de la boîte de vitesses.',
+        "Absence de bruits anormaux à l’accélération et au freinage.",
+      ],
+    },
+  }
+
+  // Log de l’analyse
+  const { error: insertError } = await supabase.from('analyses').insert({
+    email: quotaKey,
+    input_raw: annonce,
+    output_json: analyseStub,
+    model: 'stub-stepB',
+  })
+
+  if (insertError) {
+    return jsonResponse({ ok: false, error: 'ANALYSE_LOG_ERROR' }, 500)
+  }
+
+  // Réponse finale
+  return jsonResponse({
+    ok: true,
+    message: 'analyse stepB (supabase + quota) OK',
+    data: analyseStub,
+    quota: {
+      count: currentCount + 1,
+      limit: MAX_DEMO,
+    },
+  })
 }

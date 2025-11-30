@@ -37,7 +37,13 @@ function getSupabase(env: EnvBindings) {
   })
 }
 
-export const onRequest: PagesFunction<EnvBindings> = async (context) => {
+// on tape le contexte "à la main" pour éviter PagesFunction
+interface CFContext {
+  request: Request
+  env: EnvBindings
+}
+
+export const onRequest = async (context: CFContext): Promise<Response> => {
   const { request, env } = context
 
   // Préflight CORS

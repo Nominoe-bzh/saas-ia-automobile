@@ -1,4 +1,5 @@
-import { z } from 'zod'
+// functions/api/historique.ts
+
 import { createClient } from '@supabase/supabase-js'
 
 type EnvBindings = {
@@ -6,97 +7,90 @@ type EnvBindings = {
   SUPABASE_ANON_KEY: string
 }
 
-const inputSchema = z.object({
-  email: z.string().email(),
-})
-
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-}
-
+// Petit helper pour la réponse JSON
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...CORS_HEADERS,
+      'Cache-Control': 'no-store',
     },
-  })
-}
-
-function getSupabase(env: EnvBindings) {
-  return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-    auth: { persistSession: false },
   })
 }
 
 export const onRequest = async (context: {
   request: Request
   env: EnvBindings
-}): Promise<Response> => {
+}) => {
   const { request, env } = context
 
-  // Préflight CORS
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS })
-  }
-
   if (request.method !== 'POST') {
-    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
-  }
-
-  // Lecture JSON
-  let payload: unknown
-  try {
-    payload = await request.json()
-  } catch {
-    return jsonResponse({ ok: false, error: 'INVALID_JSON' }, 400)
-  }
-
-  const parsed = inputSchema.safeParse(payload)
-  if (!parsed.success) {
     return jsonResponse(
-      { ok: false, error: 'INVALID_INPUT', details: parsed.error.flatten() },
-      400,
+      { ok: false, error: 'METHOD_NOT_ALLOWED' },
+      405
     )
   }
 
-  const { email } = parsed.data
-  const supabase = getSupabase(env)
+  let emailRaw: unknown
+  try {
+    const body = await request.json()
+    emailRaw = (body as any)?.email
+  } catch {
+    return jsonResponse(
+      { ok: false, error: 'INVALID_JSON' },
+      400
+    )
+  }
 
+  const email =
+    typeof emailRaw === 'string'
+      ? emailRaw.trim().toLowerCase()
+      : ''
+
+  if (!email) {
+    return jsonResponse(
+      { ok: false, error: 'EMAIL_REQUIRED' },
+      400
+    )
+  }
+
+  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
+
+  // Requête EXACTEMENT alignée sur ta table "analyses"
   const { data, error } = await supabase
     .from('analyses')
-    .select('id, created_at, input_raw, output_json')
+    .select('id, created_at, email, input_raw, output_json')
     .eq('email', email)
     .order('created_at', { ascending: false })
     .limit(20)
 
   if (error) {
-    return jsonResponse({ ok: false, error: 'HISTORIQUE_READ_ERROR' }, 500)
+    console.error('historique / analyses error:', error)
+    return jsonResponse(
+      { ok: false, error: 'DB_ERROR' },
+      500
+    )
   }
 
-  const items = (data || []).map((row: any) => {
+  const rows = (data ?? []) as {
+    id: string
+    created_at: string
+    email: string | null
+    input_raw: string | null
+    output_json: any | null
+  }[]
+
+  const items = rows.map((row) => {
     const out = row.output_json || {}
-    const fiche = out.fiche || {}
-    const score = out.score_global || {}
-
-    const note =
-      typeof score.note_sur_100 === 'number' ? score.note_sur_100 : null
-
     return {
       id: row.id,
       created_at: row.created_at,
+      email: row.email,
       input_raw: row.input_raw,
-      titre: fiche.titre || null,
-      marque: fiche.marque || null,
-      modele: fiche.modele || null,
-      annee: fiche.annee || null,
-      kilometrage: fiche.kilometrage || null,
-      energie: fiche.energie || null,
-      prix: fiche.prix || null,
-      note,
+      fiche: out.fiche ?? null,
+      score_global: out.score_global ?? null,
+      avis_acheteur: out.avis_acheteur ?? null,
+      risques: out.risques ?? null,
     }
   })
 

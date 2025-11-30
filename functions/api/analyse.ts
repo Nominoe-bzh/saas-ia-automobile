@@ -108,8 +108,8 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
     // Mise à jour du compteur (insert ou update selon le cas)
     let writeError = null
-
-    if (!quotaRow) {
+  
+  if (!quotaRow) {
     // première fois pour cet email
     const { error } = await supabase.from('demo_quota').insert({
       email: quotaKey,
@@ -131,16 +131,16 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
 
   // --- Stub d’analyse (Step B : pas encore de vrai appel IA) ---
-  const analyseStub = {
+    const analyseStub = {
     fiche: {
       titre: 'Exemple de rapport (démo)',
-      marque: 'Renault',
-      modele: 'Clio 4',
-      finition: 'Zen',
-      annee: '2016',
-      kilometrage: '120000',
-      energie: 'diesel',
-      prix: '8000',
+      marque: 'Véhicule d’occasion',
+      modele: 'Exemple',
+      finition: null,
+      annee: null,
+      kilometrage: null,
+      energie: null,
+      prix: null,
     },
     risques: [
       {
@@ -171,6 +171,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       ],
     },
   }
+
 
   // Log de l’analyse
   const { error: insertError } = await supabase.from('analyses').insert({

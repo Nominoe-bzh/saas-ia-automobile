@@ -106,18 +106,29 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     )
   }
 
-  // Upsert du compteur
-  const { error: upsertError } = await supabase.from('demo_quota').upsert(
-    {
+    // Mise à jour du compteur (insert ou update selon le cas)
+    let writeError = null
+
+    if (!quotaRow) {
+    // première fois pour cet email
+    const { error } = await supabase.from('demo_quota').insert({
       email: quotaKey,
       count: currentCount + 1,
-    },
-    { onConflict: 'email' },
-  )
+    })
+    writeError = error
+  } else {
+    // email déjà présent → on incrémente
+    const { error } = await supabase
+      .from('demo_quota')
+      .update({ count: currentCount + 1 })
+      .eq('email', quotaKey)
+    writeError = error
+  }
 
-  if (upsertError) {
+  if (writeError) {
     return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
   }
+
 
   // --- Stub d’analyse (Step B : pas encore de vrai appel IA) ---
   const analyseStub = {

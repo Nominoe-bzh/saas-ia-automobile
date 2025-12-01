@@ -1,5 +1,3 @@
-// functions/api/historique.ts
-
 import { createClient } from '@supabase/supabase-js'
 
 type EnvBindings = {
@@ -7,95 +5,83 @@ type EnvBindings = {
   SUPABASE_ANON_KEY: string
 }
 
-// Petit helper pour la réponse JSON
-function jsonResponse(body: unknown, status = 200): Response {
+const corsHeaders: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+function jsonResponse(body: any, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Cache-Control': 'no-store',
+      ...corsHeaders,
     },
   })
 }
 
-export const onRequest = async (context: {
-  request: Request
-  env: EnvBindings
-}) => {
+export const onRequest = async (context: { request: Request; env: EnvBindings }) => {
   const { request, env } = context
 
+  // Préflight CORS
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    })
+  }
+
   if (request.method !== 'POST') {
-    return jsonResponse(
-      { ok: false, error: 'METHOD_NOT_ALLOWED' },
-      405
-    )
+    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
-  let emailRaw: unknown
+  let body: any
   try {
-    const body = await request.json()
-    emailRaw = (body as any)?.email
+    body = await request.json()
   } catch {
-    return jsonResponse(
-      { ok: false, error: 'INVALID_JSON' },
-      400
-    )
+    return jsonResponse({ ok: false, error: 'INVALID_JSON' }, 400)
   }
 
-  const email =
-    typeof emailRaw === 'string'
-      ? emailRaw.trim().toLowerCase()
-      : ''
+  const emailRaw = body?.email
+  if (!emailRaw || typeof emailRaw !== 'string') {
+    return jsonResponse({ ok: false, error: 'EMAIL_REQUIRED' }, 400)
+  }
 
+  const email = emailRaw.trim().toLowerCase()
   if (!email) {
-    return jsonResponse(
-      { ok: false, error: 'EMAIL_REQUIRED' },
-      400
-    )
+    return jsonResponse({ ok: false, error: 'EMAIL_REQUIRED' }, 400)
   }
 
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
 
- // Requête plus tolérante : match email en insensible à la casse
   const { data, error } = await supabase
     .from('analyses')
-    .select('id, created_at, email, input_raw, output_json')
-    .ilike('email', `%${email}%`) // <-- au lieu de .eq('email', email)
+    .select(
+      `
+      id,
+      created_at,
+      email,
+      input_raw,
+      fiche,
+      score_global,
+      avis_acheteur,
+      risques
+    `
+    )
+    .eq('email', email)
     .order('created_at', { ascending: false })
-    .limit(20)
+    .limit(50)
 
   if (error) {
-    console.error('historique / analyses error:', error)
     return jsonResponse(
-      { ok: false, error: 'DB_ERROR' },
+      { ok: false, error: `DB_ERROR: ${error.message}` },
       500
     )
   }
 
-  const rows = (data ?? []) as {
-    id: string
-    created_at: string
-    email: string | null
-    input_raw: string | null
-    output_json: any | null
-  }[]
-
-  const items = rows.map((row) => {
-    const out = row.output_json || {}
-    return {
-      id: row.id,
-      created_at: row.created_at,
-      email: row.email,
-      input_raw: row.input_raw,
-      fiche: out.fiche ?? null,
-      score_global: out.score_global ?? null,
-      avis_acheteur: out.avis_acheteur ?? null,
-      risques: out.risques ?? null,
-    }
-  })
-
   return jsonResponse({
     ok: true,
-    items,
+    items: data ?? [],
   })
 }

@@ -55,6 +55,7 @@ export const onRequest = async (context: { request: Request; env: EnvBindings })
 
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY)
 
+  // IMPORTANT : on ne sélectionne QUE les colonnes qui existent
   const { data, error } = await supabase
     .from('analyses')
     .select(
@@ -62,11 +63,7 @@ export const onRequest = async (context: { request: Request; env: EnvBindings })
       id,
       created_at,
       email,
-      input_raw,
-      fiche,
-      score_global,
-      avis_acheteur,
-      risques
+      input_raw
     `
     )
     .eq('email', email)
@@ -74,14 +71,14 @@ export const onRequest = async (context: { request: Request; env: EnvBindings })
     .limit(50)
 
   if (error) {
-    // IMPORTANT : on ne renvoie plus 500 pour ne pas tout casser côté front,
-    // mais un ok:false + message détaillé, avec status HTTP 200.
+    // On renvoie l’erreur mais SANS status 500
     return jsonResponse({
       ok: false,
       error: `DB_ERROR: ${error.message}`,
     })
   }
 
+  // items = tableau d’objets avec id, created_at, email, input_raw
   return jsonResponse({
     ok: true,
     items: data ?? [],

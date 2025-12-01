@@ -48,7 +48,7 @@ export const onRequest = async (context: { request: Request; env: EnvBindings })
     return jsonResponse({ ok: false, error: 'EMAIL_REQUIRED' }, 400)
   }
 
-  const email = emailRaw.trim().toLowerCase()
+  const email = emailRaw.trim()
   if (!email) {
     return jsonResponse({ ok: false, error: 'EMAIL_REQUIRED' }, 400)
   }
@@ -74,10 +74,12 @@ export const onRequest = async (context: { request: Request; env: EnvBindings })
     .limit(50)
 
   if (error) {
-    return jsonResponse(
-      { ok: false, error: `DB_ERROR: ${error.message}` },
-      500
-    )
+    // IMPORTANT : on ne renvoie plus 500 pour ne pas tout casser côté front,
+    // mais un ok:false + message détaillé, avec status HTTP 200.
+    return jsonResponse({
+      ok: false,
+      error: `DB_ERROR: ${error.message}`,
+    })
   }
 
   return jsonResponse({

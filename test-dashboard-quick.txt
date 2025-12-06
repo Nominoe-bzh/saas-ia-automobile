@@ -1,0 +1,12 @@
+# Test rapide du dashboard admin
+
+Ouvrez ce lien dans votre navigateur :
+https://www.checktonvehicule.fr/admin
+
+Mot de passe : admin2025
+
+Dites-moi ce que vous voyez :
+- ✅ Les statistiques s'affichent ?
+- ❌ Un message d'erreur ?
+- ❓ Autre chose ?
+

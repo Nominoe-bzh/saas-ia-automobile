@@ -1,230 +1,179 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ''
+type RapportData = any
 
-type AnalyseItem = {
-  id: string
-  created_at: string
-  email: string | null
-  input_raw: string | null
-  model: string | null
-  duration_ms: number | null
-  output: any | null
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ''
 
-export default function RapportPage() {
-  const router = useRouter()
+function RapportContent() {
+  const searchParams = useSearchParams()
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [item, setItem] = useState<AnalyseItem | null>(null)
+  const [status, setStatus] = useState<'pending' | 'ok' | 'err'>('pending')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [data, setData] = useState<RapportData | null>(null)
 
   useEffect(() => {
-    // On ne fait rien côté serveur
-    if (typeof window === 'undefined') return
-
-    const params = new URLSearchParams(window.location.search)
-    const id = params.get('id')
+    const id = searchParams.get('id')
 
     if (!id) {
-      setError('Identifiant de rapport manquant.')
-      setLoading(false)
+      setStatus('err')
+      setErrorMsg('Identifiant de rapport manquant dans l’URL.')
       return
     }
 
     const fetchRapport = async () => {
-      setLoading(true)
-      setError(null)
-
       try {
-        const endpoint = API_BASE
-          ? `${API_BASE}/api/rapport`
-          : '/api/rapport'
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
-        })
+        const res = await fetch(
+          `${API_BASE}/api/rapport?id=${encodeURIComponent(id)}`
+        )
 
         let json: any = null
         try {
           json = await res.json()
         } catch {
-          // réponse non JSON
+          json = null
         }
 
         if (!res.ok || !json || json.ok === false) {
           const msg =
             json?.error ||
-            `Erreur lors du chargement du rapport (code ${res.status}).`
-          setError(msg)
-          setLoading(false)
+            (res.status === 404
+              ? 'Rapport introuvable pour cet identifiant.'
+              : `Erreur (code ${res.status}). Réessayez dans quelques instants.`)
+
+          setStatus('err')
+          setErrorMsg(msg)
           return
         }
 
-        setItem(json.item as AnalyseItem)
-        setLoading(false)
+        setData(json.data)
+        setStatus('ok')
       } catch {
-        setError(
-          "Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez."
+        setStatus('err')
+        setErrorMsg(
+          'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
         )
-        setLoading(false)
       }
     }
 
     fetchRapport()
-  }, [])
+  }, [searchParams])
 
-  const handleBack = () => {
-    router.push('/mon-espace')
-  }
+  const fiche = data?.fiche || {}
+  const risques: any[] = Array.isArray(data?.risques) ? data.risques : []
+  const scoreObj = data?.score_global || {}
+  const avis = data?.avis_acheteur || data?.avis || {}
+
+  const note =
+    typeof scoreObj === 'number'
+      ? scoreObj
+      : typeof scoreObj?.note_sur_100 === 'number'
+      ? scoreObj.note_sur_100
+      : null
+
+  const recommendation =
+    avis?.resume_simple ||
+    avis?.resume ||
+    (data ? 'Analyse disponible ci-dessous.' : '')
 
   return (
     <main className="min-h-screen bg-white text-gray-900">
-      <header className="border-b">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="text-sm text-gray-600 hover:underline"
-          >
+      <header className="px-6 py-4 border-b">
+        <div className="max-w-5xl mx-auto flex items-center justify-between text-sm">
+          <Link href="/mon-espace" className="text-gray-600 hover:underline">
             ← Retour à l’espace
-          </button>
-          <h1 className="text-lg font-semibold">Détail du rapport</h1>
+          </Link>
+          <span className="font-semibold">Détail du rapport</span>
         </div>
       </header>
 
-      <section className="max-w-5xl mx-auto px-6 py-8">
-        {loading && (
-          <p className="text-sm text-gray-600">
+      <section className="px-6 py-10 max-w-5xl mx-auto">
+        {status === 'pending' && !errorMsg && (
+          <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
             Chargement du rapport en cours…
-          </p>
-        )}
-
-        {!loading && error && (
-          <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error}
           </div>
         )}
 
-        {!loading && !error && item && (
-          <div className="space-y-6">
-            {/* En-tête rapport */}
-            <div className="rounded-xl border px-4 py-3">
-              <h2 className="text-base font-semibold mb-2">
-                Informations générales
-              </h2>
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Date :</span>{' '}
-                {new Date(item.created_at).toLocaleString('fr-FR')}
+        {errorMsg && (
+          <div className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {errorMsg}
+          </div>
+        )}
+
+        {status === 'ok' && data && (
+          <div className="space-y-6 text-sm">
+            {/* Synthèse */}
+            <div className="rounded-lg border px-4 py-3">
+              <h2 className="font-semibold mb-1">Synthèse rapide</h2>
+              <p className="text-gray-700">
+                {recommendation || 'Analyse disponible.'}
               </p>
-              {item.email && (
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Email :</span> {item.email}
-                </p>
-              )}
-              {item.model && (
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Modèle IA :</span> {item.model}
-                </p>
-              )}
-              {typeof item.duration_ms === 'number' && (
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Temps de calcul :</span>{' '}
-                  {item.duration_ms} ms
-                </p>
-              )}
             </div>
 
-            {/* Annonce d’origine */}
-            {item.input_raw && (
-              <div className="rounded-xl border px-4 py-3">
-                <h2 className="text-base font-semibold mb-2">
-                  Annonce analysée
-                </h2>
-                <pre className="whitespace-pre-wrap text-sm text-gray-800">
-                  {item.input_raw}
-                </pre>
+            {/* Fiche véhicule */}
+            <div className="rounded-lg border px-4 py-3">
+              <h3 className="font-semibold mb-1">Fiche véhicule</h3>
+              <p className="text-gray-700">
+                {[fiche.marque, fiche.modele, fiche.version || fiche.finition]
+                  .filter(Boolean)
+                  .join(' ')}
+              </p>
+              <p className="text-gray-500">
+                {[
+                  fiche.annee,
+                  fiche.kilometrage,
+                  fiche.energie,
+                  fiche.prix,
+                ]
+                  .filter(Boolean)
+                  .join(' • ')}
+              </p>
+            </div>
+
+            {/* Score */}
+            {note !== null && (
+              <div className="rounded-lg border px-4 py-3">
+                <h3 className="font-semibold mb-1">Score global</h3>
+                <p className="text-gray-700">
+                  Note : <span className="font-semibold">{note} / 100</span>
+                </p>
+                {scoreObj?.resume && (
+                  <p className="text-gray-600 mt-1">{scoreObj.resume}</p>
+                )}
               </div>
             )}
 
-            {/* Résultat IA (si présent) */}
-            {item.output && (
-              <div className="rounded-xl border px-4 py-3 space-y-4">
-                <h2 className="text-base font-semibold mb-2">
-                  Résultat de l’analyse IA
-                </h2>
-
-                {/* Synthèse rapide */}
-                {item.output.avis_acheteur?.resume_simple && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">
-                      Synthèse rapide
-                    </h3>
-                    <p className="text-sm text-gray-800">
-                      {item.output.avis_acheteur.resume_simple}
-                    </p>
-                  </div>
-                )}
-
-                {/* Score */}
-                {typeof item.output.score_global?.note_sur_100 ===
-                  'number' && (
-                  <div>
-                    <h3 className="text-sm font-semibold mb-1">
-                      Score global
-                    </h3>
-                    <p className="text-sm text-gray-800">
-                      Note :{' '}
+            {/* Risques */}
+            {risques.length > 0 && (
+              <div className="rounded-lg border px-4 py-3">
+                <h3 className="font-semibold mb-2">Risques identifiés</h3>
+                <ul className="space-y-1 list-disc pl-4 text-gray-700">
+                  {risques.map((r, idx) => (
+                    <li key={idx}>
                       <span className="font-semibold">
-                        {item.output.score_global.note_sur_100} / 100
+                        {r.type ? `${r.type} – ` : ''}
+                        {r.niveau ? `${r.niveau} : ` : ''}
                       </span>
-                    </p>
-                    {item.output.score_global.resume && (
-                      <p className="text-sm text-gray-700 mt-1">
-                        {item.output.score_global.resume}
-                      </p>
-                    )}
-                  </div>
-                )}
+                      {r.detail}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-                {/* Risques */}
-                {Array.isArray(item.output.risques) &&
-                  item.output.risques.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold mb-1">
-                        Risques identifiés
-                      </h3>
-                      <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                        {item.output.risques.map(
-                          (r: any, idx: number) => (
-                            <li key={idx}>
-                              <span className="font-semibold">
-                                {r.type ? `${r.type} – ` : ''}
-                                {r.niveau ? `${r.niveau} : ` : ''}
-                              </span>
-                              {r.detail}
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    </div>
-                  )}
-
-                {/* Questions & check-list */}
-                {Array.isArray(
-                  item.output.avis_acheteur?.questions_a_poser
-                ) && (
+            {/* Questions / check-list */}
+            {(avis?.questions_a_poser || avis?.points_a_verifier_essai) && (
+              <div className="rounded-lg border px-4 py-3 space-y-3">
+                {Array.isArray(avis.questions_a_poser) && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">
+                    <h3 className="font-semibold mb-1">
                       Questions à poser au vendeur
                     </h3>
-                    <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                      {item.output.avis_acheteur.questions_a_poser.map(
+                    <ul className="list-disc pl-4 text-gray-700">
+                      {avis.questions_a_poser.map(
                         (q: string, idx: number) => (
                           <li key={idx}>{q}</li>
                         )
@@ -232,16 +181,13 @@ export default function RapportPage() {
                     </ul>
                   </div>
                 )}
-
-                {Array.isArray(
-                  item.output.avis_acheteur?.points_a_verifier_essai
-                ) && (
+                {Array.isArray(avis.points_a_verifier_essai) && (
                   <div>
-                    <h3 className="text-sm font-semibold mb-1">
-                      Points à vérifier lors de l’essai
+                    <h3 className="font-semibold mb-1">
+                      Points à vérifier à l’essai
                     </h3>
-                    <ul className="list-disc pl-5 text-sm text-gray-800 space-y-1">
-                      {item.output.avis_acheteur.points_a_verifier_essai.map(
+                    <ul className="list-disc pl-4 text-gray-700">
+                      {avis.points_a_verifier_essai.map(
                         (p: string, idx: number) => (
                           <li key={idx}>{p}</li>
                         )
@@ -251,16 +197,35 @@ export default function RapportPage() {
                 )}
               </div>
             )}
-
-            {!item.output && (
-              <p className="text-sm text-gray-600">
-                Le détail du rapport complet n’est pas encore disponible pour
-                cette analyse.
-              </p>
-            )}
           </div>
         )}
       </section>
     </main>
+  )
+}
+
+export default function RapportPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white text-gray-900">
+          <header className="px-6 py-4 border-b">
+            <div className="max-w-5xl mx-auto flex items-center justify-between text-sm">
+              <Link href="/mon-espace" className="text-gray-600 hover:underline">
+                ← Retour à l’espace
+              </Link>
+              <span className="font-semibold">Détail du rapport</span>
+            </div>
+          </header>
+          <section className="px-6 py-10 max-w-5xl mx-auto">
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Chargement du rapport en cours…
+            </div>
+          </section>
+        </main>
+      }
+    >
+      <RapportContent />
+    </Suspense>
   )
 }

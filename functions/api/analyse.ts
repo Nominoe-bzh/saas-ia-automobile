@@ -84,10 +84,10 @@ async function runOpenAI(
   const timeout = 30000 // 30 secondes
 
   const systemPrompt = `
-Tu es un expert en véhicules d'occasion et en achat automobile.
-Tu DOIS toujours répondre dans un JSON strict, sans texte autour, sans markdown.
+Tu es un expert en vehicules d'occasion et en achat automobile.
+Tu DOIS toujours repondre dans un JSON strict, sans texte autour, sans markdown.
 
-Format JSON EXACT à respecter :
+Format JSON EXACT a respecter :
 
 {
   "fiche": {
@@ -103,7 +103,7 @@ Format JSON EXACT à respecter :
   "risques": [
     {
       "type": "string",
-      "niveau": "faible | modéré | élevé",
+      "niveau": "faible | modere | eleve",
       "detail": "string",
       "recommandation": "string"
     }
@@ -120,18 +120,18 @@ Format JSON EXACT à respecter :
   }
 }
 
-Règles :
-- Analyse uniquement l'annonce fournie (pas de données externes).
-- Sois réaliste et prudent : ne sur-note pas.
-- Note sur 100 : 0 = très risqué, 100 = excellente affaire.
+Regles :
+- Analyse uniquement l'annonce fournie (pas de donnees externes).
+- Sois realiste et prudent : ne sur-note pas.
+- Note sur 100 : 0 = tres risque, 100 = excellente affaire.
 - Profil d'achat :
   - "acheter" si l'affaire semble saine,
-  - "a_negocier" si le prix ou des incertitudes demandent une négociation,
-  - "a_eviter" si les risques sont trop élevés.
+  - "a_negocier" si le prix ou des incertitudes demandent une negociation,
+  - "a_eviter" si les risques sont trop eleves.
 `.trim()
 
   const userPrompt = `
-Annonce à analyser :
+Annonce a analyser :
 
 ${annonce}
 `.trim()
@@ -178,7 +178,7 @@ ${annonce}
       const content = data?.choices?.[0]?.message?.content
 
       if (!content || typeof content !== 'string') {
-        throw new Error('Réponse OpenAI invalide: contenu manquant')
+        throw new Error('Reponse OpenAI invalide: contenu manquant')
       }
 
       let parsed: any
@@ -200,7 +200,7 @@ ${annonce}
           await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
           continue
         }
-        throw new Error('Timeout lors de l\'appel OpenAI')
+        throw new Error("Timeout lors de l'appel OpenAI")
       }
 
       if (attempt < retries) {
@@ -212,15 +212,15 @@ ${annonce}
     }
   }
 
-  throw new Error('Échec après tous les essais')
+  throw new Error('Echec apres tous les essais')
 }
 
 // ---------- Stub de secours ----------
 
 const demoStub: AnalyseResult = {
   fiche: {
-    titre: 'Exemple de rapport (démo)',
-    marque: "Véhicule d'occasion",
+    titre: 'Exemple de rapport (demo)',
+    marque: "Vehicule d'occasion",
     modele: 'Exemple',
     finition: null,
     annee: null,
@@ -230,30 +230,30 @@ const demoStub: AnalyseResult = {
   },
   risques: [
     {
-      type: 'mécanique',
-      niveau: 'modéré',
+      type: 'mecanique',
+      niveau: 'modere',
       detail:
-        "Démo uniquement : les risques réels seront calculés par l'IA sur la base de votre annonce.",
+        "Demo uniquement : les risques reels seront calcules par l'IA sur la base de votre annonce.",
       recommandation:
-        "La version complète évaluera l'entretien, le kilométrage et les faiblesses connues du modèle.",
+        "La version complete evaluera l'entretien, le kilometrage et les faiblesses connues du modele.",
     },
   ],
   score_global: {
     note_sur_100: 75,
     resume:
-      "Rapport de démo. La version finale fournira un score détaillé adapté à votre annonce réelle.",
+      "Rapport de demo. La version finale fournira un score detaille adapte a votre annonce reelle.",
     profil_achat: 'a_negocier',
   },
   avis_acheteur: {
     resume_simple:
-      'Exemple de synthèse. La version finale donnera un avis personnalisé sur votre annonce.',
+      'Exemple de synthese. La version finale donnera un avis personnalise sur votre annonce.',
     questions_a_poser: [
-      'Depuis combien de temps possédez-vous le véhicule ?',
-      "Pouvez-vous détailler l'entretien (factures, carnet) ?",
+      'Depuis combien de temps possedez-vous le vehicule ?',
+      "Pouvez-vous detailler l'entretien (factures, carnet) ?",
     ],
     points_a_verifier_essai: [
-      'Comportement général du moteur et de la boîte de vitesses.',
-      "Absence de bruits anormaux à l'accélération et au freinage.",
+      'Comportement general du moteur et de la boite de vitesses.',
+      "Absence de bruits anormaux a l'acceleration et au freinage.",
     ],
   },
 }

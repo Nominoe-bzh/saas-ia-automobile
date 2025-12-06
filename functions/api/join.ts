@@ -104,12 +104,12 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     const emailPayload = {
       from: env.MAIL_FROM,
       to: [email],
-      subject: 'Bienvenue — 3 analyses offertes à l'ouverture',
+      subject: "Bienvenue - 3 analyses offertes a l'ouverture",
       text: `Bonjour ${prenom},
 
-Tu es sur liste d'attente de Check Ton Véhicule. À l'ouverture, tu recevras 3 analyses gratuites pour tester l'outil et économiser 500–2 000 € à l'achat.
+Tu es sur liste d'attente de Check Ton Vehicule. A l'ouverture, tu recevras 3 analyses gratuites pour tester l'outil et economiser 500-2000 euros a l'achat.
 
-— Johan`,
+- Johan`,
     }
 
     const resendRes = await fetch('https://api.resend.com/emails', {

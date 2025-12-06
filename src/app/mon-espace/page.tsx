@@ -157,7 +157,7 @@ export default function MonEspacePage() {
                 <th className="text-left px-4 py-2">Véhicule</th>
                 <th className="text-left px-4 py-2">Note / 100</th>
                 <th className="text-left px-4 py-2">Synthèse</th>
-                <th className="text-right px-4 py-2">Rapport</th>
+                <th className="text-right px-4 py-2">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -167,7 +167,7 @@ export default function MonEspacePage() {
                     colSpan={5}
                     className="px-4 py-4 text-center text-gray-500"
                   >
-                    Aucune analyse trouvée pour l’instant.
+                    Aucune analyse trouvée pour l'instant.
                   </td>
                 </tr>
               )}
@@ -194,16 +194,37 @@ export default function MonEspacePage() {
                   </td>
                   <td className="px-4 py-2 text-right">
                     {item.hasRapport ? (
-                      <a
-                        href={`/mon-espace/rapport?id=${encodeURIComponent(
-                          item.id
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-700 hover:underline"
-                      >
-                        Voir le rapport
-                      </a>
+                      <div className="flex items-center justify-end gap-2">
+                        <a
+                          href={`/mon-espace/rapport?id=${encodeURIComponent(
+                            item.id
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-700 hover:underline"
+                        >
+                          Voir
+                        </a>
+                        <span className="text-gray-300">|</span>
+                        <a
+                          href={`${API_BASE}/api/pdf/generate?id=${encodeURIComponent(
+                            item.id
+                          )}`}
+                          download
+                          className="text-xs text-green-700 hover:underline"
+                          onClick={() => {
+                            if (typeof window !== 'undefined' && (window as any).plausible) {
+                              ;(window as any).plausible('PDF_Downloaded', {
+                                props: {
+                                  from: 'historique',
+                                },
+                              })
+                            }
+                          }}
+                        >
+                          PDF
+                        </a>
+                      </div>
                     ) : (
                       <span className="text-xs text-gray-400">
                         Non disponible
@@ -217,8 +238,7 @@ export default function MonEspacePage() {
         </div>
 
         <p className="mt-3 text-xs text-gray-500">
-          Les rapports détaillés seront bientôt consultables et exportables
-          depuis cet espace.
+          Cliquez sur "Voir" pour consulter le rapport ou "PDF" pour le telecharger.
         </p>
       </section>
     </main>

@@ -3,6 +3,8 @@
 
 'use client'
 
+import { useState } from 'react'
+
 type AnalysisResultProps = {
   data: {
     fiche: {
@@ -46,11 +48,82 @@ type AnalysisResultProps = {
       vendeur: string[]
     }
   }
+  analysisId?: string
 }
 
-export default function AnalysisResult({ data }: AnalysisResultProps) {
+export default function AnalysisResult({ data, analysisId }: AnalysisResultProps) {
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError, setPdfError] = useState<string | null>(null)
+
+  const handleDownloadPDF = async () => {
+    if (!analysisId) {
+      setPdfError('ID d\'analyse manquant')
+      return
+    }
+
+    setPdfLoading(true)
+    setPdfError(null)
+
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE || ''
+      const response = await fetch(`${apiBase}/api/pdf/generate?id=${analysisId}`)
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`)
+      }
+
+      // Télécharger le PDF
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `rapport-${data.fiche.marque}-${data.fiche.modele}-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+
+      // Track download
+      if (typeof window !== 'undefined' && (window as any).plausible) {
+        ;(window as any).plausible('PDF_Downloaded', {
+          props: {
+            marque: data.fiche.marque,
+            score: data.score_global.note_sur_100,
+          },
+        })
+      }
+    } catch (error: any) {
+      console.error('PDF download error:', error)
+      setPdfError('Impossible de telecharger le PDF. Reessaie plus tard.')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Bouton de téléchargement PDF */}
+      {analysisId && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold mb-1">Telecharger le rapport complet</h3>
+              <p className="text-sm text-gray-600">Format PDF a partager ou imprimer</p>
+            </div>
+            <button
+              onClick={handleDownloadPDF}
+              disabled={pdfLoading}
+              className="px-6 py-3 bg-black text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {pdfLoading ? 'Generation...' : 'Telecharger PDF'}
+            </button>
+          </div>
+          {pdfError && (
+            <p className="mt-3 text-sm text-red-600">{pdfError}</p>
+          )}
+        </div>
+      )}
+
       {/* Verdict principal avec jauge */}
       <VerdictCard score={data.score_global} />
 

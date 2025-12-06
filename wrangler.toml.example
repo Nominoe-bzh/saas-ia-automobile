@@ -1,0 +1,17 @@
+# Configuration Wrangler pour développement local
+# Copiez ce fichier en wrangler.toml et remplissez avec vos vraies valeurs
+# ⚠️ Ne commitez JAMAIS wrangler.toml avec de vraies clés
+
+name = "check-ton-vehicule"
+compatibility_date = "2024-01-01"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[env.preview]
+vars = { ENVIRONMENT = "preview" }
+
+# Variables d'environnement (à définir via wrangler secret put)
+# Utilisez: wrangler secret put SUPABASE_URL
+# Ou définissez-les dans Cloudflare Dashboard
+

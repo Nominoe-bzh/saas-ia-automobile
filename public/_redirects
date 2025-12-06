@@ -1,0 +1,7 @@
+# Cloudflare Pages redirects for SPA routing
+# Toutes les routes non-fichiers sont redirigées vers index.html
+
+/mon-espace/*  /mon-espace.html  200
+/mon-espace/rapport/*  /mon-espace/rapport.html  200
+/*  /index.html  200
+

@@ -26,10 +26,9 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     ".next/types/**/*.ts",
-    "functions/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [

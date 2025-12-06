@@ -5,91 +5,117 @@ type EnvBindings = {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-type PagesContext = {
+type CFContext = {
   request: Request
   env: EnvBindings
 }
 
-function jsonResponse(status: number, body: any) {
+// En-têtes CORS réutilisables
+const CORS_HEADERS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-headers': 'Content-Type',
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'access-control-allow-origin': '*',
-      'access-control-allow-methods': 'GET,OPTIONS',
-      'access-control-allow-headers': 'Content-Type',
+      'Content-Type': 'application/json',
+      ...CORS_HEADERS,
     },
   })
 }
 
-export const onRequest = async (context: PagesContext): Promise<Response> => {
+export const onRequest = async (context: CFContext): Promise<Response> => {
   const { request, env } = context
 
   // Préflight CORS
   if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'access-control-allow-origin': '*',
-        'access-control-allow-methods': 'GET,OPTIONS',
-        'access-control-allow-headers': 'Content-Type',
-      },
-    })
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
   }
 
-  if (request.method !== 'GET') {
-    return jsonResponse(405, { ok: false, error: 'METHOD_NOT_ALLOWED' })
+  // Accepte GET et POST pour flexibilité
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
 
-  if (!id) {
-    return jsonResponse(400, { ok: false, error: 'MISSING_ID' })
+  if (!id || id.trim().length === 0) {
+    return jsonResponse({ ok: false, error: 'MISSING_ID', message: 'Identifiant de rapport requis' }, 400)
   }
 
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  })
+  const supabase = createClient(
+    env.SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: { persistSession: false },
+    }
+  )
 
   try {
     const { data, error } = await supabase
       .from('analyses')
       .select('output_json')
-      .eq('id', id)
+      .eq('id', id.trim())
       .maybeSingle()
 
     if (error) {
-      console.error('Supabase error /api/rapport', error)
-      return jsonResponse(500, {
-        ok: false,
-        error: 'DB_ERROR',
-        detail: error.message,
-      })
+      console.error('Supabase error /api/rapport:', error)
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'DB_ERROR',
+          message: 'Erreur lors de la récupération du rapport',
+        },
+        500,
+      )
     }
 
     if (!data || !data.output_json) {
-      return jsonResponse(404, {
-        ok: false,
-        error: 'RAPPORT_NOT_FOUND',
-      })
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'RAPPORT_NOT_FOUND',
+          message: 'Rapport introuvable pour cet identifiant',
+        },
+        404,
+      )
     }
 
-    const output =
-      typeof data.output_json === 'string'
-        ? JSON.parse(data.output_json)
-        : data.output_json
+    let output: any
+    try {
+      output =
+        typeof data.output_json === 'string'
+          ? JSON.parse(data.output_json)
+          : data.output_json
+    } catch (parseError) {
+      console.error('JSON parse error /api/rapport:', parseError)
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'INVALID_DATA',
+          message: 'Données du rapport corrompues',
+        },
+        500,
+      )
+    }
 
-    return jsonResponse(200, {
+    return jsonResponse({
       ok: true,
       data: output,
     })
   } catch (e: any) {
-    console.error('Unexpected /api/rapport', e)
-    return jsonResponse(500, {
-      ok: false,
-      error: 'UNEXPECTED_ERROR',
-      detail: e?.message ?? String(e),
-    })
+    console.error('Unexpected error /api/rapport:', e)
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'UNEXPECTED_ERROR',
+        message: 'Erreur inattendue lors de la récupération du rapport',
+      },
+      500,
+    )
   }
 }

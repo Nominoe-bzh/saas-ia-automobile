@@ -39,15 +39,49 @@ function getSupabase(env: EnvBindings) {
   })
 }
 
-interface CFContext {
+type CFContext = {
   request: Request
   env: EnvBindings
 }
 
 // ---------- Helper : appel OpenAI ----------
 
-async function runOpenAI(env: EnvBindings, annonce: string) {
-  const model = env.OPENAI_MODEL || 'gpt-4.1-mini'
+type AnalyseResult = {
+  fiche: {
+    titre: string
+    marque: string
+    modele: string
+    finition: string | null
+    annee: string | null
+    kilometrage: string | null
+    energie: string | null
+    prix: string | null
+  }
+  risques: Array<{
+    type: string
+    niveau: 'faible' | 'modéré' | 'élevé'
+    detail: string
+    recommandation: string
+  }>
+  score_global: {
+    note_sur_100: number
+    resume: string
+    profil_achat: 'acheter' | 'a_negocier' | 'a_eviter'
+  }
+  avis_acheteur: {
+    resume_simple: string
+    questions_a_poser: string[]
+    points_a_verifier_essai: string[]
+  }
+}
+
+async function runOpenAI(
+  env: EnvBindings,
+  annonce: string,
+  retries = 2,
+): Promise<AnalyseResult> {
+  const model = env.OPENAI_MODEL || 'gpt-4o-mini'
+  const timeout = 30000 // 30 secondes
 
   const systemPrompt = `
 Tu es un expert en véhicules d'occasion et en achat automobile.
@@ -102,50 +136,91 @@ Annonce à analyser :
 ${annonce}
 `.trim()
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.3,
-      response_format: { type: 'json_object' },
-    }),
-  })
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-  if (!response.ok) {
-    throw new Error(`OpenAI HTTP ${response.status}`)
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+        }),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        const errorMsg = `OpenAI HTTP ${response.status}: ${errorText}`
+        
+        // Retry sur erreurs 5xx ou rate limit
+        if ((response.status >= 500 || response.status === 429) && attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+          continue
+        }
+        
+        throw new Error(errorMsg)
+      }
+
+      const data = await response.json() as any
+      const content = data?.choices?.[0]?.message?.content
+
+      if (!content || typeof content !== 'string') {
+        throw new Error('Réponse OpenAI invalide: contenu manquant')
+      }
+
+      let parsed: any
+      try {
+        parsed = JSON.parse(content)
+      } catch (parseError) {
+        throw new Error(`JSON OpenAI non parseable: ${parseError}`)
+      }
+
+      // Validation basique de la structure
+      if (!parsed.fiche || !parsed.score_global || !parsed.avis_acheteur) {
+        throw new Error('Structure JSON OpenAI invalide')
+      }
+
+      return parsed
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        if (attempt < retries) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+          continue
+        }
+        throw new Error('Timeout lors de l\'appel OpenAI')
+      }
+
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+        continue
+      }
+
+      throw error
+    }
   }
 
-  const data = await response.json() as any
-  const content = data?.choices?.[0]?.message?.content
-
-  if (!content || typeof content !== 'string') {
-    throw new Error('Réponse OpenAI invalide')
-  }
-
-  let parsed: any
-  try {
-    parsed = JSON.parse(content)
-  } catch {
-    throw new Error('JSON OpenAI non parseable')
-  }
-
-  return parsed
+  throw new Error('Échec après tous les essais')
 }
 
 // ---------- Stub de secours ----------
 
-const demoStub = {
+const demoStub: AnalyseResult = {
   fiche: {
     titre: 'Exemple de rapport (démo)',
-    marque: 'Véhicule d’occasion',
+    marque: "Véhicule d'occasion",
     modele: 'Exemple',
     finition: null,
     annee: null,
@@ -158,9 +233,9 @@ const demoStub = {
       type: 'mécanique',
       niveau: 'modéré',
       detail:
-        'Démo uniquement : les risques réels seront calculés par l’IA sur la base de votre annonce.',
+        "Démo uniquement : les risques réels seront calculés par l'IA sur la base de votre annonce.",
       recommandation:
-        'La version complète évaluera l’entretien, le kilométrage et les faiblesses connues du modèle.',
+        "La version complète évaluera l'entretien, le kilométrage et les faiblesses connues du modèle.",
     },
   ],
   score_global: {
@@ -174,11 +249,11 @@ const demoStub = {
       'Exemple de synthèse. La version finale donnera un avis personnalisé sur votre annonce.',
     questions_a_poser: [
       'Depuis combien de temps possédez-vous le véhicule ?',
-      'Pouvez-vous détailler l’entretien (factures, carnet) ?',
+      "Pouvez-vous détailler l'entretien (factures, carnet) ?",
     ],
     points_a_verifier_essai: [
       'Comportement général du moteur et de la boîte de vitesses.',
-      "Absence de bruits anormaux à l’accélération et au freinage.",
+      "Absence de bruits anormaux à l'accélération et au freinage.",
     ],
   },
 }
@@ -263,18 +338,20 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
   // --- Appel IA principal ---
   let analyse = demoStub
-  let modelUsed = 'stub-stepB'
+  let modelUsed = 'stub-demo'
 
   try {
     analyse = await runOpenAI(env, annonce)
-    modelUsed = env.OPENAI_MODEL || 'gpt-4.1-mini'
-  } catch (err) {
+    modelUsed = env.OPENAI_MODEL || 'gpt-4o-mini'
+  } catch (err: any) {
+    // Log de l'erreur pour debugging
+    console.error('OpenAI error:', err?.message || String(err))
     // en cas d'échec, on tombe sur le stub générique
     analyse = demoStub
     modelUsed = 'stub-fallback'
   }
 
-  // Log de l’analyse
+  // Log de l'analyse (non bloquant)
   const { error: insertError } = await supabase.from('analyses').insert({
     email: quotaKey,
     input_raw: annonce,
@@ -283,7 +360,8 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   })
 
   if (insertError) {
-    return jsonResponse({ ok: false, error: 'ANALYSE_LOG_ERROR' }, 500)
+    console.error('Supabase insert error:', insertError)
+    // On continue même si le log échoue, l'analyse est déjà faite
   }
 
   // --- Envoi email (optionnel) ---

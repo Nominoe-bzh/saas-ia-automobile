@@ -1,6 +1,6 @@
 // Cloudflare Function pour récupérer les stats Plausible
 type EnvBindings = {
-  PLAUSIBLE_API_KEY: string
+  SAAS_IA_PLAUSIBLE_API: string
   PLAUSIBLE_SITE_ID?: string
 }
 
@@ -38,12 +38,12 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   }
 
   // Vérifier que l'API key est configurée
-  if (!env.PLAUSIBLE_API_KEY) {
+  if (!env.SAAS_IA_PLAUSIBLE_API) {
     return jsonResponse(
       {
         ok: false,
-        error: 'PLAUSIBLE_API_KEY not configured',
-        message: 'Configurez PLAUSIBLE_API_KEY dans Cloudflare Pages',
+        error: 'SAAS_IA_PLAUSIBLE_API not configured',
+        message: 'Configurez SAAS_IA_PLAUSIBLE_API dans Cloudflare Pages',
       },
       500,
     )
@@ -59,7 +59,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       `https://plausible.io/api/v1/stats/aggregate?site_id=${siteId}&period=${period}&metrics=visitors,pageviews,bounce_rate,visit_duration`,
       {
         headers: {
-          Authorization: `Bearer ${env.PLAUSIBLE_API_KEY}`,
+          Authorization: `Bearer ${env.SAAS_IA_PLAUSIBLE_API}`,
         },
       },
     )
@@ -76,7 +76,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       `https://plausible.io/api/v1/stats/breakdown?site_id=${siteId}&period=${period}&property=event:name&metrics=visitors,events`,
       {
         headers: {
-          Authorization: `Bearer ${env.PLAUSIBLE_API_KEY}`,
+          Authorization: `Bearer ${env.SAAS_IA_PLAUSIBLE_API}`,
         },
       },
     )

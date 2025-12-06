@@ -1,10 +1,9 @@
 // src/lib/pdf/report-template.tsx
-// Template PDF professionnel pour les rapports d'analyse
+// Template PDF professionnel - Sprint 6 conforme specs
 
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import type { AnalysisResult } from '../types/announcement'
 
-// Styles PDF
 const styles = StyleSheet.create({
   page: {
     padding: 40,
@@ -12,6 +11,45 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
+  // Page de garde
+  coverPage: {
+    padding: 40,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100%',
+  },
+  coverTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  coverSubtitle: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 40,
+    textAlign: 'center',
+  },
+  coverInfo: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 60,
+    textAlign: 'center',
+  },
+  coverLogo: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#000',
+  },
+  analysisId: {
+    fontSize: 10,
+    color: '#ccc',
+    marginTop: 5,
+  },
+  // Header sections
   header: {
     marginBottom: 30,
     borderBottom: '2px solid #000',
@@ -27,6 +65,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 3,
   },
+  // Sections
   section: {
     marginBottom: 20,
   },
@@ -38,6 +77,7 @@ const styles = StyleSheet.create({
     borderBottom: '1px solid #ddd',
     paddingBottom: 5,
   },
+  // Verdict
   verdictBox: {
     padding: 15,
     borderRadius: 5,
@@ -69,6 +109,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 1.5,
   },
+  // Résumé (Section 1)
+  summaryBox: {
+    backgroundColor: '#f9fafb',
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 15,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottom: '1px solid #e5e7eb',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  summaryValue: {
+    fontSize: 11,
+    color: '#000',
+  },
+  summaryHighlight: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2563eb',
+  },
+  // Prix
   priceBox: {
     padding: 12,
     backgroundColor: '#f3f4f6',
@@ -93,24 +162,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2563eb',
   },
-  ficheGrid: {
+  ecartBox: {
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  ecartPositive: {
+    backgroundColor: '#dcfce7',
+    border: '1px solid #16a34a',
+  },
+  ecartNegative: {
+    backgroundColor: '#fee2e2',
+    border: '1px solid #dc2626',
+  },
+  // Points forts/faibles
+  pointsBox: {
+    marginBottom: 15,
+  },
+  pointItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 10,
+    marginBottom: 6,
+    paddingLeft: 5,
   },
-  ficheItem: {
-    width: '50%',
-    marginBottom: 8,
-  },
-  ficheLabel: {
-    fontSize: 9,
-    color: '#666',
-    marginBottom: 2,
-  },
-  ficheValue: {
-    fontSize: 11,
+  pointBullet: {
+    fontSize: 14,
+    marginRight: 8,
     fontWeight: 'bold',
   },
+  pointText: {
+    fontSize: 10,
+    lineHeight: 1.4,
+    flex: 1,
+  },
+  pointPositive: {
+    color: '#16a34a',
+  },
+  pointNegative: {
+    color: '#dc2626',
+  },
+  // Risques
   risqueItem: {
     padding: 10,
     backgroundColor: '#f9fafb',
@@ -156,6 +246,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 1.3,
   },
+  // Checklist
   checklistItem: {
     fontSize: 10,
     marginBottom: 4,
@@ -168,6 +259,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 8,
   },
+  // Footer
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -179,40 +271,17 @@ const styles = StyleSheet.create({
     borderTop: '1px solid #ddd',
     paddingTop: 10,
   },
-  opportuniteBadge: {
-    padding: '5px 10px',
-    borderRadius: 5,
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginTop: 5,
-  },
-  opportuniteExcellente: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-  },
-  opportuniteBonne: {
-    backgroundColor: '#dbeafe',
-    color: '#1e3a8a',
-  },
-  opportuniteCorrecte: {
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-  },
-  opportuniteSurcote: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-  },
 })
 
 type PDFReportProps = {
   data: AnalysisResult
+  analysisId: string
   generatedAt?: Date
 }
 
-export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
+export function PDFReport({ data, analysisId, generatedAt = new Date() }: PDFReportProps) {
   const { fiche, risques, score_global, avis_acheteur, prix_cible, checklist_inspection } = data
 
-  // Déterminer le style du verdict
   const verdictStyle =
     score_global.profil_achat === 'acheter'
       ? styles.verdictAcheter
@@ -226,40 +295,106 @@ export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
     a_eviter: 'A EVITER',
   }[score_global.profil_achat]
 
-  // Style opportunité
-  const opportuniteStyle = prix_cible
-    ? prix_cible.opportunite === 'excellente'
-      ? styles.opportuniteExcellente
-      : prix_cible.opportunite === 'bonne'
-      ? styles.opportuniteBonne
-      : prix_cible.opportunite === 'correcte'
-      ? styles.opportuniteCorrecte
-      : styles.opportuniteSurcote
-    : styles.opportuniteCorrecte
+  // Calculer l'écart de prix
+  const prixAnnonce = extractPrice(fiche.prix)
+  const ecartPrix = prix_cible && prixAnnonce ? prixAnnonce - prix_cible.estimation : 0
+  const ecartPct = prix_cible && prixAnnonce ? ((ecartPrix / prix_cible.estimation) * 100) : 0
 
-  const opportuniteLabel = {
-    excellente: 'Excellente opportunite',
-    bonne: 'Bonne affaire',
-    correcte: 'Prix correct',
-    surcote: 'Surcote',
-  }
+  // Séparer points forts et points faibles depuis les risques
+  const pointsForts = risques.filter(r => r.niveau === 'faible').slice(0, 3)
+  const pointsFaibles = risques.filter(r => r.niveau !== 'faible')
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Check Ton Vehicule</Text>
-          <Text style={styles.subtitle}>Rapport d'Analyse IA - Vehicule d'occasion</Text>
-          <Text style={styles.subtitle}>
-            Genere le {generatedAt.toLocaleDateString('fr-FR')} a{' '}
-            {generatedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+      {/* PAGE DE GARDE */}
+      <Page size="A4" style={styles.coverPage}>
+        <Text style={styles.coverLogo}>Check Ton Vehicule</Text>
+        <Text style={styles.coverTitle}>Rapport d'Analyse IA</Text>
+        <Text style={styles.coverSubtitle}>Vehicule d'occasion</Text>
+        
+        <View style={{ marginTop: 40 }}>
+          <Text style={{ fontSize: 14, marginBottom: 10, textAlign: 'center' }}>
+            {fiche.marque} {fiche.modele} {fiche.finition || ''}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#666', textAlign: 'center' }}>
+            {fiche.annee || ''} • {fiche.kilometrage || ''} • {fiche.energie || ''}
           </Text>
         </View>
 
-        {/* Verdict principal */}
+        <Text style={styles.coverInfo}>
+          Genere le {generatedAt.toLocaleDateString('fr-FR')} a{' '}
+          {generatedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+        </Text>
+        <Text style={styles.analysisId}>ID: {analysisId}</Text>
+      </Page>
+
+      {/* PAGE 1 : RESUME */}
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Section 1 - Resume</Text>
+        </View>
+
+        {/* Véhicule */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Verdict IA</Text>
+          <Text style={styles.sectionTitle}>Informations Vehicule</Text>
+          <View style={styles.summaryBox}>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Marque</Text>
+              <Text style={styles.summaryValue}>{fiche.marque || '-'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Modele</Text>
+              <Text style={styles.summaryValue}>{fiche.modele || '-'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Annee</Text>
+              <Text style={styles.summaryValue}>{fiche.annee || '-'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Kilometrage</Text>
+              <Text style={styles.summaryValue}>{fiche.kilometrage || '-'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Motorisation</Text>
+              <Text style={styles.summaryValue}>{fiche.energie || '-'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Prix vendeur vs Prix IA */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Analyse de Prix</Text>
+          <View style={styles.priceBox}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Prix vendeur</Text>
+              <Text style={styles.priceValue}>{fiche.prix || 'Non communique'}</Text>
+            </View>
+            {prix_cible && (
+              <>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Prix IA recommande</Text>
+                  <Text style={styles.priceTarget}>{prix_cible.estimation.toLocaleString('fr-FR')} EUR</Text>
+                </View>
+                {ecartPrix !== 0 && (
+                  <View style={[styles.ecartBox, ecartPrix > 0 ? styles.ecartNegative : styles.ecartPositive]}>
+                    <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 3 }}>
+                      Ecart: {ecartPrix > 0 ? '+' : ''}{ecartPrix.toLocaleString('fr-FR')} EUR ({ecartPct > 0 ? '+' : ''}{ecartPct.toFixed(1)}%)
+                    </Text>
+                    <Text style={{ fontSize: 10 }}>
+                      {ecartPrix > 0 
+                        ? 'Prix superieur a la valeur estimee - Marge de negociation possible'
+                        : 'Prix inferieur a la valeur estimee - Bonne opportunite'}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Verdict */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Verdict Final</Text>
           <View style={[styles.verdictBox, verdictStyle]}>
             <Text style={styles.verdictScore}>{score_global.note_sur_100}/100</Text>
             <Text style={styles.verdictLabel}>{verdictLabel}</Text>
@@ -267,153 +402,84 @@ export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
           </View>
         </View>
 
-        {/* Prix cible */}
-        {prix_cible && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Prix Cible</Text>
-            <View style={styles.priceBox}>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Fourchette basse</Text>
-                <Text style={styles.priceValue}>{prix_cible.fourchette_basse.toLocaleString('fr-FR')} EUR</Text>
-              </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Prix cible recommande</Text>
-                <Text style={styles.priceTarget}>{prix_cible.estimation.toLocaleString('fr-FR')} EUR</Text>
-              </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Fourchette haute</Text>
-                <Text style={styles.priceValue}>{prix_cible.fourchette_haute.toLocaleString('fr-FR')} EUR</Text>
-              </View>
-              {prix_cible.ecart_annonce !== 0 && (
-                <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>Ecart avec annonce</Text>
-                  <Text style={styles.priceValue}>
-                    {prix_cible.ecart_annonce > 0 ? '+' : ''}
-                    {prix_cible.ecart_annonce.toLocaleString('fr-FR')} EUR (
-                    {prix_cible.ecart_pourcentage > 0 ? '+' : ''}
-                    {prix_cible.ecart_pourcentage.toFixed(1)}%)
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View style={[styles.opportuniteBadge, opportuniteStyle]}>
-              <Text>{opportuniteLabel[prix_cible.opportunite]}</Text>
-            </View>
-            <Text style={[styles.verdictText, { marginTop: 10 }]}>{prix_cible.justification}</Text>
-          </View>
-        )}
-
-        {/* Fiche technique */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fiche Technique</Text>
-          <View style={styles.ficheGrid}>
-            {fiche.marque && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Marque</Text>
-                <Text style={styles.ficheValue}>{fiche.marque}</Text>
-              </View>
-            )}
-            {fiche.modele && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Modele</Text>
-                <Text style={styles.ficheValue}>{fiche.modele}</Text>
-              </View>
-            )}
-            {fiche.finition && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Finition</Text>
-                <Text style={styles.ficheValue}>{fiche.finition}</Text>
-              </View>
-            )}
-            {fiche.annee && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Annee</Text>
-                <Text style={styles.ficheValue}>{fiche.annee}</Text>
-              </View>
-            )}
-            {fiche.kilometrage && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Kilometrage</Text>
-                <Text style={styles.ficheValue}>{fiche.kilometrage}</Text>
-              </View>
-            )}
-            {fiche.energie && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Energie</Text>
-                <Text style={styles.ficheValue}>{fiche.energie}</Text>
-              </View>
-            )}
-            {fiche.prix && (
-              <View style={styles.ficheItem}>
-                <Text style={styles.ficheLabel}>Prix annonce</Text>
-                <Text style={styles.ficheValue}>{fiche.prix}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Risques */}
-        {risques.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Risques Identifies</Text>
-            {risques.map((risque, idx) => {
-              const niveauStyle =
-                risque.niveau === 'faible'
-                  ? styles.niveauFaible
-                  : risque.niveau === 'modéré'
-                  ? styles.niveauModere
-                  : styles.niveauEleve
-
-              return (
-                <View key={idx} style={styles.risqueItem}>
-                  <View style={styles.risqueHeader}>
-                    <Text style={styles.risqueType}>{risque.type}</Text>
-                    <View style={[styles.risqueNiveau, niveauStyle]}>
-                      <Text>{risque.niveau.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.risqueDetail}>{risque.detail}</Text>
-                  <Text style={styles.risqueReco}>Recommandation: {risque.recommandation}</Text>
-                </View>
-              )
-            })}
-          </View>
-        )}
-
-        {/* Footer */}
         <View style={styles.footer}>
           <Text>Check Ton Vehicule - www.checktonvehicule.fr</Text>
-          <Text>Rapport genere automatiquement par IA - A titre informatif uniquement</Text>
         </View>
       </Page>
 
-      {/* Page 2 : Checklist et avis */}
+      {/* PAGE 2 : ANALYSE DETAILLEE */}
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>Check Ton Vehicule</Text>
-          <Text style={styles.subtitle}>Checklist d'Inspection & Avis Acheteur</Text>
+          <Text style={styles.title}>Section 2 - Analyse Detaillee</Text>
         </View>
 
-        {/* Checklist */}
+        {/* Points forts */}
+        {pointsForts.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Points Forts</Text>
+            <View style={styles.pointsBox}>
+              {pointsForts.map((point, idx) => (
+                <View key={idx} style={styles.pointItem}>
+                  <Text style={[styles.pointBullet, styles.pointPositive]}>+</Text>
+                  <Text style={styles.pointText}>{point.detail}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Points faibles / Signaux d'alerte */}
+        {pointsFaibles.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Points Faibles / Signaux d'Alerte</Text>
+            <View style={styles.pointsBox}>
+              {pointsFaibles.map((point, idx) => (
+                <View key={idx} style={styles.risqueItem}>
+                  <View style={styles.risqueHeader}>
+                    <Text style={styles.risqueType}>{point.type}</Text>
+                    <View style={[
+                      styles.risqueNiveau,
+                      point.niveau === 'modéré' ? styles.niveauModere : styles.niveauEleve
+                    ]}>
+                      <Text>{point.niveau.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.risqueDetail}>{point.detail}</Text>
+                  <Text style={styles.risqueReco}>Recommandation: {point.recommandation}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          <Text>Check Ton Vehicule - www.checktonvehicule.fr</Text>
+        </View>
+      </Page>
+
+      {/* PAGE 3 : CHECKLIST */}
+      <Page size="A4" style={styles.page}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Section 3 - Checklist d'Inspection</Text>
+        </View>
+
         {checklist_inspection && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Checklist d'Inspection</Text>
-
-            <Text style={styles.checklistCategory}>Mecanique</Text>
+            <Text style={styles.checklistCategory}>Mecanique / Esthetique</Text>
             {checklist_inspection.mecanique.map((item, idx) => (
               <Text key={idx} style={styles.checklistItem}>
                 • {item}
               </Text>
             ))}
 
-            <Text style={styles.checklistCategory}>Administratif</Text>
+            <Text style={styles.checklistCategory}>Administratif / Historique</Text>
             {checklist_inspection.administratif.map((item, idx) => (
               <Text key={idx} style={styles.checklistItem}>
                 • {item}
               </Text>
             ))}
 
-            <Text style={styles.checklistCategory}>Questions au vendeur</Text>
+            <Text style={styles.checklistCategory}>Questions a poser au vendeur</Text>
             {checklist_inspection.vendeur.map((item, idx) => (
               <Text key={idx} style={styles.checklistItem}>
                 • {item}
@@ -427,21 +493,12 @@ export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
           <Text style={styles.sectionTitle}>Avis Acheteur</Text>
           <Text style={[styles.verdictText, { marginBottom: 15 }]}>{avis_acheteur.resume_simple}</Text>
 
-          {avis_acheteur.questions_a_poser.length > 0 && (
-            <View style={{ marginBottom: 15 }}>
-              <Text style={styles.checklistCategory}>Questions a poser</Text>
-              {avis_acheteur.questions_a_poser.map((q, idx) => (
-                <Text key={idx} style={styles.checklistItem}>
-                  • {q}
-                </Text>
-              ))}
-            </View>
-          )}
-
           {avis_acheteur.points_a_verifier_essai.length > 0 && (
-            <View>
-              <Text style={styles.checklistCategory}>Points a verifier a l'essai</Text>
-              {avis_acheteur.points_a_verifier_essai.map((p, idx) => (
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', marginBottom: 5 }}>
+                Points a verifier a l'essai:
+              </Text>
+              {avis_acheteur.points_a_verifier_essai.slice(0, 5).map((p, idx) => (
                 <Text key={idx} style={styles.checklistItem}>
                   • {p}
                 </Text>
@@ -450,7 +507,6 @@ export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
           )}
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <Text>Check Ton Vehicule - www.checktonvehicule.fr</Text>
           <Text>Rapport genere automatiquement par IA - A titre informatif uniquement</Text>
@@ -460,3 +516,9 @@ export function PDFReport({ data, generatedAt = new Date() }: PDFReportProps) {
   )
 }
 
+function extractPrice(priceStr: string | null): number | null {
+  if (!priceStr) return null
+  const numbers = priceStr.replace(/[^0-9]/g, '')
+  const price = parseInt(numbers, 10)
+  return isNaN(price) ? null : price
+}

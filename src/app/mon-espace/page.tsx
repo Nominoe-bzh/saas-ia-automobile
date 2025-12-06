@@ -207,9 +207,7 @@ export default function MonEspacePage() {
                         </a>
                         <span className="text-gray-300">|</span>
                         <a
-                          href={`${API_BASE}/api/pdf/generate?id=${encodeURIComponent(
-                            item.id
-                          )}`}
+                          href={`/api/report/${item.id}`}
                           download
                           className="text-xs text-green-700 hover:underline"
                           onClick={() => {

@@ -34,6 +34,11 @@ export default function MonEspacePage() {
       return
     }
 
+    // Track: Consultation historique
+    if (typeof window !== 'undefined' && (window as any).plausible) {
+      ;(window as any).plausible('Historique_Consulted')
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/historique`, {
         method: 'POST',
@@ -66,6 +71,15 @@ export default function MonEspacePage() {
 
       setItems(list)
       setStatus('ok')
+      
+      // Track: Succès avec nombre d'analyses
+      if (typeof window !== 'undefined' && (window as any).plausible) {
+        ;(window as any).plausible('Historique_Loaded', {
+          props: {
+            nbAnalyses: list.length,
+          },
+        })
+      }
     } catch {
       setStatus('err')
       setErrorMsg(

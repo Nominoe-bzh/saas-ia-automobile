@@ -25,6 +25,15 @@ function RapportContent() {
     }
 
     const fetchRapport = async () => {
+      // Track: Consultation rapport
+      if (typeof window !== 'undefined' && (window as any).plausible) {
+        ;(window as any).plausible('Rapport_Viewed', {
+          props: {
+            rapportId: id.substring(0, 8), // Premiers caractères pour anonymiser
+          },
+        })
+      }
+
       try {
         const res = await fetch(
           `${API_BASE}/api/rapport?id=${encodeURIComponent(id)}`
@@ -51,6 +60,17 @@ function RapportContent() {
 
         setData(json.data)
         setStatus('ok')
+        
+        // Track: Rapport chargé avec métadonnées
+        if (typeof window !== 'undefined' && (window as any).plausible) {
+          const score = json.data?.score_global?.note_sur_100
+          ;(window as any).plausible('Rapport_Loaded', {
+            props: {
+              score: score || 0,
+              hasRisques: Array.isArray(json.data?.risques) && json.data.risques.length > 0,
+            },
+          })
+        }
       } catch {
         setStatus('err')
         setErrorMsg(

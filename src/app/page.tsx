@@ -60,9 +60,19 @@ export default function Home() {
   // ============ Démo analyse IA ============
   const handleDemoAnalyse = async () => {
     if (!demoAnnonce.trim()) {
-      setDemoError("Merci de coller une annonce ou une description avant de lancer l’analyse.")
+      setDemoError("Merci de coller une annonce ou une description avant de lancer l'analyse.")
       setDemoStatus('err')
       return
+    }
+
+    // Track: Démarrage analyse
+    if (typeof window !== 'undefined' && (window as any).plausible) {
+      ;(window as any).plausible('Demo_Analyse_Started', {
+        props: {
+          hasEmail: !!demoEmail,
+          annonceLength: demoAnnonce.length,
+        },
+      })
     }
 
     setDemoStatus('pending')
@@ -90,29 +100,61 @@ export default function Home() {
         const msg =
           json?.error ||
           (res.status === 429
-            ? 'Trop de requêtes d’analyse pour le moment. Réessaie dans quelques minutes.'
-            : `Erreur technique côté serveur (code ${res.status}). Réessaie plus tard.`)
+            ? "Trop de requetes d'analyse pour le moment. Reessaie dans quelques minutes."
+            : `Erreur technique cote serveur (code ${res.status}). Reessaie plus tard.`)
 
         setDemoError(msg)
         setDemoStatus('err')
+        
+        // Track: Erreur analyse
+        if (typeof window !== 'undefined' && (window as any).plausible) {
+          ;(window as any).plausible('Demo_Analyse_Error', {
+            props: {
+              errorType: res.status === 429 ? 'quota_exceeded' : 'server_error',
+              statusCode: res.status,
+            },
+          })
+        }
+        
         return
       }
 
       // Compatibilité : /api/analyse peut renvoyer { data: ... } ou { analyse: ... }
       const analyse = json.data || json.analyse || null
       if (!analyse) {
-        setDemoError('La réponse de l’IA est vide ou invalide. Réessaie avec une autre annonce.')
+        setDemoError("La reponse de l'IA est vide ou invalide. Reessaie avec une autre annonce.")
         setDemoStatus('err')
         return
       }
 
       setDemoResult(analyse)
       setDemoStatus('ok')
+      
+      // Track: Succès analyse
+      if (typeof window !== 'undefined' && (window as any).plausible) {
+        ;(window as any).plausible('Demo_Analyse_Success', {
+          props: {
+            hasEmail: !!demoEmail,
+            score: analyse.score_global?.note_sur_100 || 0,
+            profilAchat: analyse.score_global?.profil_achat || 'unknown',
+            nbRisques: Array.isArray(analyse.risques) ? analyse.risques.length : 0,
+          },
+        })
+      }
     } catch {
       setDemoError(
-        'Impossible de joindre le serveur. Vérifie ta connexion Internet et réessaie dans quelques instants.'
+        "Impossible de joindre le serveur. Verifie ta connexion Internet et reessaie dans quelques instants."
       )
       setDemoStatus('err')
+      
+      // Track: Erreur réseau
+      if (typeof window !== 'undefined' && (window as any).plausible) {
+        ;(window as any).plausible('Demo_Analyse_Error', {
+          props: {
+            errorType: 'network_error',
+          },
+        })
+      }
     }
   }
 

@@ -53,9 +53,11 @@ Dans votre projet Cloudflare Pages :
 2. Ajoutez pour **Production** et **Preview** :
 
 ```
-PLAUSIBLE_API_KEY=votre-cle-api-ici
+SAAS_IA_PLAUSIBLE_API=votre-cle-api-ici
 PLAUSIBLE_SITE_ID=checktonvehicule.fr
 ```
+
+**Note :** La variable doit s'appeler exactement `SAAS_IA_PLAUSIBLE_API` (pas `PLAUSIBLE_API_KEY`).
 
 ### 3. Configurer le mot de passe admin
 
@@ -129,7 +131,7 @@ Prêt à committer et déployer !
 
 ### 3. En cas de problème
 
-**"PLAUSIBLE_API_KEY not configured"**
+**"PLAUSIBLE_API_KEY not configured"** ou **"SAAS_IA_PLAUSIBLE_API not configured"**
 - Vérifiez que la variable est bien dans Cloudflare Pages
 - Vérifiez l'environnement (Production vs Preview)
 

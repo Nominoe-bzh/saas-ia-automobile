@@ -65,22 +65,8 @@ export default function AnalysisResult({ data, analysisId }: AnalysisResultProps
     setPdfError(null)
 
     try {
-      const response = await fetch(`/api/report/${analysisId}`)
-
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`)
-      }
-
-      // Télécharger le PDF
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `rapport-${data.fiche.marque}-${data.fiche.modele}-${new Date().toISOString().split('T')[0]}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      // Ouvrir directement le lien de téléchargement
+      window.open(`/api/pdf/generate?id=${analysisId}`, '_blank')
 
       // Track download
       if (typeof window !== 'undefined' && (window as any).plausible) {

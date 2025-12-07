@@ -127,6 +127,12 @@ export default function Home() {
       const analyse = json.data || json.analyse || null
       const analysisId = json.analysisId || null
       
+      console.log('📊 Response from /api/analyse:', { 
+        hasAnalyse: !!analyse, 
+        analysisId, 
+        responseKeys: Object.keys(json) 
+      })
+      
       if (!analyse) {
         setDemoError("La reponse de l'IA est vide ou invalide. Reessaie avec une autre annonce.")
         setDemoStatus('err')

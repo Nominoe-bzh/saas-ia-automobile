@@ -364,6 +364,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
   // Log de l'analyse (non bloquant)
   let analysisId: string | null = null
+  console.log('🔍 Tentative insertion analyse dans Supabase...')
   const { data: insertData, error: insertError } = await supabase
     .from('analyses')
     .insert({
@@ -375,11 +376,13 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     .select('id')
 
   if (insertError) {
-    console.error('Supabase insert error:', insertError)
+    console.error('❌ Supabase insert error:', insertError)
     // On continue même si le log échoue, l'analyse est déjà faite
   } else if (insertData && insertData[0]) {
     analysisId = insertData[0].id
-    console.log('Analysis inserted with ID:', analysisId)
+    console.log('✅ Analysis inserted with ID:', analysisId)
+  } else {
+    console.warn('⚠️ Insertion succeeded but no ID returned. insertData:', insertData)
   }
 
   // --- Envoi email (optionnel) ---

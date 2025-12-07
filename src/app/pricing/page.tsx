@@ -19,7 +19,7 @@ const PLANS: Plan[] = [
     id: 'single',
     name: 'Analyse Unique',
     credits: 1,
-    price: 5,
+    price: 4.9,
     features: [
       '1 analyse IA complète',
       'Rapport PDF téléchargeable',
@@ -32,14 +32,14 @@ const PLANS: Plan[] = [
     id: 'pack5',
     name: 'Pack 5 Analyses',
     credits: 5,
-    price: 15,
+    price: 14.9,
     popular: true,
     features: [
       '5 analyses IA complètes',
       'Rapports PDF téléchargeables',
       'Score sur 100',
       'Checklist d\'inspection',
-      'Économisez 10 €',
+      'Économisez 9,60 €',
       'Valable 1 an',
     ],
   },
@@ -47,13 +47,13 @@ const PLANS: Plan[] = [
     id: 'pack30',
     name: 'Pack 30 Analyses',
     credits: 30,
-    price: 60,
+    price: 59,
     features: [
       '30 analyses IA complètes',
       'Rapports PDF téléchargeables',
       'Score sur 100',
       'Checklist d\'inspection',
-      'Économisez 90 €',
+      'Économisez 88 €',
       'Idéal professionnels',
       'Valable 1 an',
     ],
@@ -169,12 +169,12 @@ export default function PricingPage() {
               <div className="text-center mb-6">
                 <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
                 <div className="flex items-baseline justify-center gap-1 mb-1">
-                  <span className="text-5xl font-bold">{plan.price}</span>
+                  <span className="text-5xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
                   <span className="text-2xl text-gray-600">€</span>
                 </div>
                 <p className="text-sm text-gray-500">
                   {plan.credits} analyse{plan.credits > 1 ? 's' : ''}
-                  {plan.credits > 1 && ` (${(plan.price / plan.credits).toFixed(2)}€/analyse)`}
+                  {plan.credits > 1 && ` (${(plan.price / plan.credits).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€/analyse)`}
                 </p>
               </div>
 

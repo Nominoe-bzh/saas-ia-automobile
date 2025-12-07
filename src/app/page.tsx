@@ -364,7 +364,7 @@ export default function Home() {
                   <AnalysisResult data={demoResult} analysisId={demoAnalysisId || undefined} />
                 </div>
               ) : (
-                <SimpleAnalysisResult data={demoResult} />
+                <SimpleAnalysisResult data={demoResult} analysisId={demoAnalysisId || undefined} />
               )}
             </>
           )}

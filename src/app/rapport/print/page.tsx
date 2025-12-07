@@ -22,11 +22,24 @@ function PrintContent() {
 
     const fetchData = async () => {
       try {
+        console.log('[PDF Print] Fetching report with ID:', id)
+        console.log('[PDF Print] API URL:', `${API_BASE}/api/rapport?id=${encodeURIComponent(id)}`)
+        
         const res = await fetch(`${API_BASE}/api/rapport?id=${encodeURIComponent(id)}`)
-        if (!res.ok) {
-          throw new Error('Rapport introuvable')
-        }
+        console.log('[PDF Print] Response status:', res.status)
+        
         const json = await res.json()
+        console.log('[PDF Print] Response JSON:', json)
+        
+        if (!res.ok || !json.ok) {
+          throw new Error(json.message || 'Rapport introuvable')
+        }
+        
+        if (!json.data) {
+          throw new Error('Données du rapport manquantes')
+        }
+        
+        console.log('[PDF Print] Data loaded successfully')
         setData(json.data)
         setLoading(false)
 

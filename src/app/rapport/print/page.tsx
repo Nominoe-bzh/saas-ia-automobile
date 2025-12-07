@@ -30,6 +30,8 @@ function PrintContent() {
         
         const json = await res.json()
         console.log('[PDF Print] Response JSON:', json)
+        console.log('[PDF Print] json.ok:', json.ok)
+        console.log('[PDF Print] json.data:', json.data)
         
         if (!res.ok || !json.ok) {
           throw new Error(json.message || 'Rapport introuvable')
@@ -39,7 +41,19 @@ function PrintContent() {
           throw new Error('Données du rapport manquantes')
         }
         
-        console.log('[PDF Print] Data loaded successfully')
+        console.log('[PDF Print] Data structure:', {
+          hasFiche: !!json.data.fiche,
+          hasScore: !!json.data.score_global,
+          hasRisques: !!json.data.risques,
+          hasPrix: !!json.data.prix_cible,
+          hasChecklist: !!json.data.checklist_inspection,
+          hasAvis: !!json.data.avis_acheteur,
+          ficheMarque: json.data.fiche?.marque,
+          scoreNote: json.data.score_global?.note_sur_100
+        })
+        
+        console.log('[PDF Print] Full data object:', JSON.stringify(json.data, null, 2))
+        
         setData(json.data)
         setLoading(false)
 

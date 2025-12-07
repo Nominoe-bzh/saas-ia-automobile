@@ -91,6 +91,9 @@ export async function GET(
       })
     )
 
+    // Convertir Buffer en Uint8Array pour compatibilité Web API
+    const pdfUint8Array = new Uint8Array(pdfBuffer)
+
     // Nom de fichier
     const vehiculeName = [analysisData.fiche.marque, analysisData.fiche.modele]
       .filter(Boolean)
@@ -101,7 +104,7 @@ export async function GET(
     const filename = `rapport-${vehiculeName}-${timestamp}.pdf`
 
     // Retourner le PDF
-    return new Response(pdfBuffer, {
+    return new Response(pdfUint8Array, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

@@ -373,12 +373,12 @@ export function PDFReport({ data, analysisId, generatedAt = new Date() }: PDFRep
               <>
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Prix IA recommande</Text>
-                  <Text style={styles.priceTarget}>{prix_cible.estimation.toLocaleString('fr-FR')} EUR</Text>
+                  <Text style={styles.priceTarget}>{formatPrice(prix_cible.estimation)} EUR</Text>
                 </View>
                 {ecartPrix !== 0 && (
                   <View style={[styles.ecartBox, ecartPrix > 0 ? styles.ecartNegative : styles.ecartPositive]}>
                     <Text style={{ fontSize: 12, fontWeight: 'bold', marginBottom: 3 }}>
-                      Ecart: {ecartPrix > 0 ? '+' : ''}{ecartPrix.toLocaleString('fr-FR')} EUR ({ecartPct > 0 ? '+' : ''}{ecartPct.toFixed(1)}%)
+                      Ecart: {ecartPrix > 0 ? '+' : ''}{formatPrice(Math.abs(ecartPrix))} EUR ({ecartPct > 0 ? '+' : ''}{ecartPct.toFixed(1)}%)
                     </Text>
                     <Text style={{ fontSize: 10 }}>
                       {ecartPrix > 0 
@@ -521,4 +521,9 @@ function extractPrice(priceStr: string | null): number | null {
   const numbers = priceStr.replace(/[^0-9]/g, '')
   const price = parseInt(numbers, 10)
   return isNaN(price) ? null : price
+}
+
+function formatPrice(price: number): string {
+  // Formatage manuel avec espace normal (pas non-breaking space)
+  return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }

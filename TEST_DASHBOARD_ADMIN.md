@@ -131,3 +131,4 @@ Dans Cloudflare Pages, attendez que le statut passe à :
 
 **Une fois tous les tests OK, votre dashboard admin est pleinement opérationnel ! 🎉**
 
+

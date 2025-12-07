@@ -8,9 +8,9 @@ import { PDFReport } from '@/lib/pdf/report-template'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const analysisId = params.id
+  const { id: analysisId } = await params
 
   // Valider UUID
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -21,8 +21,8 @@ export async function GET(
     )
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_ANON_KEY
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json(
@@ -122,4 +122,5 @@ export async function GET(
     )
   }
 }
+
 

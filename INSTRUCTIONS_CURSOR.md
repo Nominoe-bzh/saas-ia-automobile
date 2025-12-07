@@ -60,3 +60,5 @@ Si Cursor propose une alternative hors-stack ou hors-sprint : **REFUS SYSTÉMATI
 
 Tu dois appliquer exactement les spécifications fournies par le Product Manager (ChatGPT).
 
+
+

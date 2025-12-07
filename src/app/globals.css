@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  /* Cache tous les éléments de layout habituels */
+  nav, header, footer, aside, .sidebar {
+    display: none !important;
+  }
+  /* Cache les boutons d'action */
+  button, .no-print {
+    display: none !important;
+  }
+  /* Assure que le contenu prend toute la largeur */
+  .max-w-4xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

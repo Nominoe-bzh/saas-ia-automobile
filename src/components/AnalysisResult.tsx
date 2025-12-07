@@ -66,7 +66,7 @@ export default function AnalysisResult({ data, analysisId }: AnalysisResultProps
 
     try {
       // Ouvrir la page d'impression dans un nouvel onglet
-      window.open(`/rapport/${analysisId}/print`, '_blank')
+      window.open(`/rapport/print?id=${analysisId}`, '_blank')
 
       // Track download
       if (typeof window !== 'undefined' && (window as any).plausible) {

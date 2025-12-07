@@ -207,7 +207,7 @@ export default function MonEspacePage() {
                         </a>
                         <span className="text-gray-300">|</span>
                         <a
-                          href={`/rapport/${item.id}/print`}
+                          href={`/rapport/print?id=${item.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-green-700 hover:underline"

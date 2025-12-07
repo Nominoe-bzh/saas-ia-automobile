@@ -1,29 +1,28 @@
-// src/app/rapport/[id]/print/page.tsx
-// Page d'impression du rapport (génération PDF via navigateur)
-
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
 
-export default function PrintReportPage({ params }: { params: Promise<{ id: string }> }) {
+function PrintContent() {
+  const searchParams = useSearchParams()
+  const id = searchParams.get('id')
+  
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [id, setId] = useState<string | null>(null)
 
   useEffect(() => {
-    params.then((p) => setId(p.id))
-  }, [params])
-
-  useEffect(() => {
-    if (!id) return
+    if (!id) {
+      setError('ID d\'analyse manquant.')
+      setLoading(false)
+      return
+    }
 
     const fetchData = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/rapport?id=${id}`)
+        const res = await fetch(`${API_BASE}/api/rapport?id=${encodeURIComponent(id)}`)
         if (!res.ok) {
           throw new Error('Rapport introuvable')
         }
@@ -31,7 +30,7 @@ export default function PrintReportPage({ params }: { params: Promise<{ id: stri
         setData(json.data)
         setLoading(false)
 
-        // Auto-print après chargement (optionnel)
+        // Auto-print après chargement
         setTimeout(() => {
           window.print()
         }, 500)
@@ -342,5 +341,15 @@ export default function PrintReportPage({ params }: { params: Promise<{ id: stri
   )
 }
 
-
+export default function PrintPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-600">Initialisation...</p>
+      </div>
+    }>
+      <PrintContent />
+    </Suspense>
+  )
+}
 

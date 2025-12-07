@@ -25,7 +25,7 @@ export default function SimpleAnalysisResult({ data, analysisId }: SimpleAnalysi
 
     try {
       // Ouvrir la page d'impression dans un nouvel onglet
-      window.open(`/rapport/${analysisId}/print`, '_blank')
+      window.open(`/rapport/print?id=${analysisId}`, '_blank')
 
       if (typeof window !== 'undefined' && (window as any).plausible) {
         ;(window as any).plausible('PDF_Downloaded', {

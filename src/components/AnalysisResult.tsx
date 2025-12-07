@@ -65,9 +65,8 @@ export default function AnalysisResult({ data, analysisId }: AnalysisResultProps
     setPdfError(null)
 
     try {
-      // Utiliser URL absolue pour Cloudflare Functions
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
-      window.open(`${apiBase}/api/pdf/generate?id=${analysisId}`, '_blank')
+      // Ouvrir la page d'impression dans un nouvel onglet
+      window.open(`/rapport/${analysisId}/print`, '_blank')
 
       // Track download
       if (typeof window !== 'undefined' && (window as any).plausible) {

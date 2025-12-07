@@ -207,8 +207,9 @@ export default function MonEspacePage() {
                         </a>
                         <span className="text-gray-300">|</span>
                         <a
-                          href={`${API_BASE}/api/pdf/generate?id=${item.id}`}
-                          download
+                          href={`/rapport/${item.id}/print`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="text-xs text-green-700 hover:underline"
                           onClick={() => {
                             if (typeof window !== 'undefined' && (window as any).plausible) {

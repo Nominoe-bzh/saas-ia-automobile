@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 type EnvBindings = {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
+  SUPABASE_SERVICE_ROLE_KEY: string
   RESEND_API_KEY: string
   MAIL_FROM: string
   OPENAI_API_KEY: string
@@ -295,12 +296,66 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   const UNLIMITED_EMAIL = 'saas.ia.automobile@gmail.com'
   const isUnlimitedUser = email && email.toLowerCase().trim() === UNLIMITED_EMAIL.toLowerCase()
 
-  // --- Gestion du quota ---
+  // --- Gestion des crédits payants et quotas ---
   const quotaKey = email || 'no-email'
   let currentCount = 0
+  let usedPaidCredit = false
   
-  // Si utilisateur illimité, on skip complètement le système de quota
-  if (!isUnlimitedUser) {
+  // Si utilisateur illimité, on skip complètement le système de quota et crédits
+  if (!isUnlimitedUser && email) {
+    // ÉTAPE 1 : Vérifier les crédits payants (prioritaire)
+    const supabaseServiceRole = createClient(
+      env.SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY,
+      { auth: { persistSession: false } }
+    )
+
+    console.log('[Analyse] Checking paid credits for:', email)
+
+    const { data: paidPlans, error: paidError } = await supabaseServiceRole
+      .from('paid_plans')
+      .select('*')
+      .eq('email', email.trim())
+      .gt('credits_remaining', 0)
+      .order('created_at', { ascending: true }) // Consommer les plus anciens d'abord
+
+    if (paidError) {
+      console.error('[Analyse] Error fetching paid_plans:', paidError)
+      // On continue vers le quota démo en cas d'erreur
+    } else if (paidPlans && paidPlans.length > 0) {
+      // Utiliser le premier plan avec des crédits
+      const plan = paidPlans[0]
+      
+      console.log('[Analyse] Using paid credit:', {
+        planId: plan.id,
+        planType: plan.plan_type,
+        creditsRemaining: plan.credits_remaining,
+      })
+
+      // Décrémenter le crédit
+      const { error: updateError } = await supabaseServiceRole
+        .from('paid_plans')
+        .update({
+          credits_remaining: plan.credits_remaining - 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', plan.id)
+
+      if (updateError) {
+        console.error('[Analyse] Error updating paid_plans:', updateError)
+        return jsonResponse(
+          { ok: false, error: 'CREDIT_UPDATE_ERROR', message: 'Erreur lors de la consommation du crédit' },
+          500
+        )
+      }
+
+      usedPaidCredit = true
+      console.log('[Analyse] Paid credit consumed successfully')
+    }
+  }
+
+  // ÉTAPE 2 : Si pas de crédit payant utilisé, vérifier le quota démo
+  if (!isUnlimitedUser && !usedPaidCredit) {
     const { data: quotaRow, error: quotaError } = await supabase
       .from('demo_quota')
       .select('*')
@@ -480,9 +535,13 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       count: 0,
       limit: -1, // -1 indique illimité
       unlimited: true,
+    } : usedPaidCredit ? {
+      source: 'paid',
+      message: 'Crédit payant utilisé',
     } : {
       count: currentCount + 1,
       limit: MAX_DEMO,
+      source: 'demo',
     },
     email_sent: emailSent,
   })

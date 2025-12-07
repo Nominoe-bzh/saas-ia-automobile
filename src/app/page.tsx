@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type React from 'react'
+import Link from 'next/link'
 import AnalysisResult from '@/components/AnalysisResult'
 import SimpleAnalysisResult from '@/components/SimpleAnalysisResult'
 
@@ -311,10 +312,16 @@ export default function Home() {
         {/* Bloc démo analyse IA */}
         <div className="rounded-2xl border p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-center">
-            Tester une analyse d’annonce (démo)
+            Tester une analyse d'annonce (démo)
           </h2>
           <p className="mt-2 text-sm text-gray-600 text-center">
             Collez une annonce Le Bon Coin, La Centrale, ou décrivez simplement le véhicule.
+          </p>
+          <p className="mt-1 text-xs text-gray-500 text-center">
+            3 analyses gratuites par email •{' '}
+            <Link href="/pricing" className="text-blue-600 hover:underline font-medium">
+              Voir les formules payantes
+            </Link>
           </p>
 
           <div className="mt-4 space-y-3">
@@ -350,7 +357,15 @@ export default function Home() {
 
             {demoError && (
               <div className="mt-3 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {demoError}
+                <p className="mb-2">{demoError}</p>
+                {demoError.includes('QUOTA_EXCEEDED') || demoError.toLowerCase().includes('limite') ? (
+                  <Link
+                    href="/pricing"
+                    className="inline-block mt-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:opacity-90"
+                  >
+                    Voir les formules payantes
+                  </Link>
+                ) : null}
               </div>
             )}
           </div>

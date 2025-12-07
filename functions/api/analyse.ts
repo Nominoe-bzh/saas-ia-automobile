@@ -291,49 +291,60 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   const { annonce, email } = parsed.data
   const supabase = getSupabase(env)
 
+  // --- Email special sans limitation de quota ---
+  const UNLIMITED_EMAIL = 'saas.ia.automobile@gmail.com'
+  const isUnlimitedUser = email && email.toLowerCase().trim() === UNLIMITED_EMAIL.toLowerCase()
+
   // --- Gestion du quota ---
   const quotaKey = email || 'no-email'
-  const { data: quotaRow, error: quotaError } = await supabase
-    .from('demo_quota')
-    .select('*')
-    .eq('email', quotaKey)
-    .maybeSingle()
-
-  if (quotaError && quotaError.code !== 'PGRST116') {
-    return jsonResponse({ ok: false, error: 'QUOTA_READ_ERROR' }, 500)
-  }
-
-  const currentCount = quotaRow?.count ?? 0
-  if (currentCount >= MAX_DEMO) {
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'QUOTA_EXCEEDED',
-        quota_count: currentCount,
-        quota_limit: MAX_DEMO,
-      },
-      429,
-    )
-  }
-
-  // Insert / update du compteur
-  let writeError = null
-  if (!quotaRow) {
-    const { error } = await supabase.from('demo_quota').insert({
-      email: quotaKey,
-      count: currentCount + 1,
-    })
-    writeError = error
-  } else {
-    const { error } = await supabase
+  let currentCount = 0
+  
+  // Si utilisateur illimité, on skip complètement le système de quota
+  if (!isUnlimitedUser) {
+    const { data: quotaRow, error: quotaError } = await supabase
       .from('demo_quota')
-      .update({ count: currentCount + 1 })
+      .select('*')
       .eq('email', quotaKey)
-    writeError = error
-  }
+      .maybeSingle()
 
-  if (writeError) {
-    return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
+    if (quotaError && quotaError.code !== 'PGRST116') {
+      return jsonResponse({ ok: false, error: 'QUOTA_READ_ERROR' }, 500)
+    }
+
+    currentCount = quotaRow?.count ?? 0
+    if (currentCount >= MAX_DEMO) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: 'QUOTA_EXCEEDED',
+          quota_count: currentCount,
+          quota_limit: MAX_DEMO,
+        },
+        429,
+      )
+    }
+
+    // Insert / update du compteur
+    let writeError = null
+    if (!quotaRow) {
+      const { error } = await supabase.from('demo_quota').insert({
+        email: quotaKey,
+        count: currentCount + 1,
+      })
+      writeError = error
+    } else {
+      const { error } = await supabase
+        .from('demo_quota')
+        .update({ count: currentCount + 1 })
+        .eq('email', quotaKey)
+      writeError = error
+    }
+
+    if (writeError) {
+      return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
+    }
+  } else {
+    console.log('🌟 Utilisateur illimite detecte:', email)
   }
 
   // --- Appel IA principal ---
@@ -462,7 +473,11 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     message: 'analyse IA OK',
     data: analyse,
     analysisId: analysisId,
-    quota: {
+    quota: isUnlimitedUser ? {
+      count: 0,
+      limit: -1, // -1 indique illimité
+      unlimited: true,
+    } : {
       count: currentCount + 1,
       limit: MAX_DEMO,
     },

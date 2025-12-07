@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import * as React from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 
 type ItemHistorique = {
@@ -23,17 +22,7 @@ export default function MonEspacePage() {
   )
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Charger l'email sauvegardé au montage du composant
-  React.useEffect(() => {
-    const savedEmail = sessionStorage.getItem('userEmail')
-    if (savedEmail) {
-      setEmail(savedEmail)
-      // Auto-charger l'historique
-      loadHistorique(savedEmail)
-    }
-  }, [])
-
-  const loadHistorique = async (emailToLoad: string) => {
+  const loadHistorique = useCallback(async (emailToLoad: string) => {
     setStatus('pending')
     setErrorMsg(null)
     setItems([])
@@ -99,7 +88,17 @@ export default function MonEspacePage() {
         'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
       )
     }
-  }
+  }, [])
+
+  // Charger l'email sauvegardé au montage du composant
+  useEffect(() => {
+    const savedEmail = sessionStorage.getItem('userEmail')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      // Auto-charger l'historique
+      loadHistorique(savedEmail)
+    }
+  }, [loadHistorique])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

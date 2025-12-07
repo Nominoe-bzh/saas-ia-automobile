@@ -196,7 +196,7 @@ export default function MonEspacePage() {
                     {item.hasRapport ? (
                       <div className="flex items-center justify-end gap-2">
                         <a
-                          href={`/mon-espace/rapport?id=${encodeURIComponent(
+                          href={`/rapport?id=${encodeURIComponent(
                             item.id
                           )}`}
                           target="_blank"

@@ -104,7 +104,7 @@ function RapportContent() {
       <header className="px-6 py-4 border-b">
         <div className="max-w-5xl mx-auto flex items-center justify-between text-sm">
           <Link href="/mon-espace" className="text-gray-600 hover:underline">
-            ← Retour à l’espace
+            ← Retour a Mon espace
           </Link>
           <span className="font-semibold">Détail du rapport</span>
         </div>

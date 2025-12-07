@@ -352,16 +352,23 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   }
 
   // Log de l'analyse (non bloquant)
-  const { error: insertError } = await supabase.from('analyses').insert({
-    email: quotaKey,
-    input_raw: annonce,
-    output_json: analyse,
-    model: modelUsed,
-  })
+  let analysisId: string | null = null
+  const { data: insertData, error: insertError } = await supabase
+    .from('analyses')
+    .insert({
+      email: quotaKey,
+      input_raw: annonce,
+      output_json: analyse,
+      model: modelUsed,
+    })
+    .select('id')
 
   if (insertError) {
     console.error('Supabase insert error:', insertError)
     // On continue même si le log échoue, l'analyse est déjà faite
+  } else if (insertData && insertData[0]) {
+    analysisId = insertData[0].id
+    console.log('Analysis inserted with ID:', analysisId)
   }
 
   // --- Envoi email (optionnel) ---
@@ -454,6 +461,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     ok: true,
     message: 'analyse IA OK',
     data: analyse,
+    analysisId: analysisId,
     quota: {
       count: currentCount + 1,
       limit: MAX_DEMO,

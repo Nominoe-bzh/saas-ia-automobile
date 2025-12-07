@@ -17,6 +17,7 @@ export default function Home() {
   const [demoAnnonce, setDemoAnnonce] = useState('')
   const [demoStatus, setDemoStatus] = useState<'idle' | 'pending' | 'ok' | 'err'>('idle')
   const [demoResult, setDemoResult] = useState<any | null>(null)
+  const [demoAnalysisId, setDemoAnalysisId] = useState<string | null>(null)
   const [demoError, setDemoError] = useState<string | null>(null)
 
   // ============ Formulaire liste d’attente ============
@@ -80,6 +81,7 @@ export default function Home() {
     setDemoStatus('pending')
     setDemoError(null)
     setDemoResult(null)
+    setDemoAnalysisId(null)
 
     try {
       const res = await fetch('/api/analyse', {
@@ -123,6 +125,8 @@ export default function Home() {
 
       // Compatibilité : /api/analyse peut renvoyer { data: ... } ou { analyse: ... }
       const analyse = json.data || json.analyse || null
+      const analysisId = json.analysisId || null
+      
       if (!analyse) {
         setDemoError("La reponse de l'IA est vide ou invalide. Reessaie avec une autre annonce.")
         setDemoStatus('err')
@@ -130,6 +134,7 @@ export default function Home() {
       }
 
       setDemoResult(analyse)
+      setDemoAnalysisId(analysisId)
       setDemoStatus('ok')
       
       // Track: Succès analyse
@@ -350,7 +355,7 @@ export default function Home() {
               {/* Afficher le nouveau composant si prix_cible ou checklist_inspection présent */}
               {(demoResult.prix_cible || demoResult.checklist_inspection) ? (
                 <div className="mt-6">
-                  <AnalysisResult data={demoResult} />
+                  <AnalysisResult data={demoResult} analysisId={demoAnalysisId || undefined} />
                 </div>
               ) : (
                 <SimpleAnalysisResult data={demoResult} />

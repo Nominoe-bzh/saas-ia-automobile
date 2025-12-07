@@ -12,7 +12,7 @@ type ItemHistorique = {
   hasRapport: boolean
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ''
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
 
 export default function MonEspacePage() {
   const [email, setEmail] = useState('')
@@ -207,7 +207,7 @@ export default function MonEspacePage() {
                         </a>
                         <span className="text-gray-300">|</span>
                         <a
-                          href={`/api/pdf/generate?id=${item.id}`}
+                          href={`${API_BASE}/api/pdf/generate?id=${item.id}`}
                           download
                           className="text-xs text-green-700 hover:underline"
                           onClick={() => {

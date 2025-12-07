@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 
 type RapportData = any
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || ''
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
 
 function RapportContent() {
   const searchParams = useSearchParams()

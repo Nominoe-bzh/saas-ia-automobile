@@ -37,10 +37,10 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    // Vérifier la signature
+    // Vérifier la signature (async pour Cloudflare Workers)
     let event: Stripe.Event
     try {
-      event = stripe.webhooks.constructEvent(
+      event = await stripe.webhooks.constructEventAsync(
         rawBody,
         signature,
         env.STRIPE_WEBHOOK_SECRET

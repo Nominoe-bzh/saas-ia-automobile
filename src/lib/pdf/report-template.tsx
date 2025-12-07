@@ -439,7 +439,7 @@ export function PDFReport({ data, analysisId, generatedAt = new Date() }: PDFRep
                     <Text style={styles.risqueType}>{point.type}</Text>
                     <View style={[
                       styles.risqueNiveau,
-                      point.niveau === 'modéré' ? styles.niveauModere : styles.niveauEleve
+                      point.niveau === 'modere' ? styles.niveauModere : styles.niveauEleve
                     ]}>
                       <Text>{point.niveau.toUpperCase()}</Text>
                     </View>

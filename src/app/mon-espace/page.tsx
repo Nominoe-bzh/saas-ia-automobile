@@ -216,8 +216,6 @@ export default function MonEspacePage() {
                           href={`/rapport?id=${encodeURIComponent(
                             item.id
                           )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className="text-xs text-blue-700 hover:underline"
                         >
                           Voir

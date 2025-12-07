@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import * as React from 'react'
 import Link from 'next/link'
 
 type ItemHistorique = {
@@ -22,17 +23,29 @@ export default function MonEspacePage() {
   )
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  // Charger l'email sauvegardé au montage du composant
+  React.useEffect(() => {
+    const savedEmail = sessionStorage.getItem('userEmail')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      // Auto-charger l'historique
+      loadHistorique(savedEmail)
+    }
+  }, [])
+
+  const loadHistorique = async (emailToLoad: string) => {
     setStatus('pending')
     setErrorMsg(null)
     setItems([])
 
-    if (!email.trim()) {
+    if (!emailToLoad.trim()) {
       setStatus('err')
       setErrorMsg('Merci de saisir un email.')
       return
     }
+
+    // Sauvegarder l'email dans sessionStorage
+    sessionStorage.setItem('userEmail', emailToLoad.trim())
 
     // Track: Consultation historique
     if (typeof window !== 'undefined' && (window as any).plausible) {
@@ -43,7 +56,7 @@ export default function MonEspacePage() {
       const res = await fetch(`${API_BASE}/api/historique`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: emailToLoad.trim() }),
       })
 
       let json: any = null
@@ -86,6 +99,11 @@ export default function MonEspacePage() {
         'Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.'
       )
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    await loadHistorique(email)
   }
 
   return (

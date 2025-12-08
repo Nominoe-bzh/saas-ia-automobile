@@ -142,27 +142,27 @@ ${annonce}
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.3,
-          response_format: { type: 'json_object' },
-        }),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    }),
         signal: controller.signal,
-      })
+  })
 
       clearTimeout(timeoutId)
 
-      if (!response.ok) {
+  if (!response.ok) {
         const errorText = await response.text().catch(() => '')
         const errorMsg = `OpenAI HTTP ${response.status}: ${errorText}`
         
@@ -173,18 +173,18 @@ ${annonce}
         }
         
         throw new Error(errorMsg)
-      }
+  }
 
-      const data = await response.json() as any
-      const content = data?.choices?.[0]?.message?.content
+  const data = await response.json() as any
+  const content = data?.choices?.[0]?.message?.content
 
-      if (!content || typeof content !== 'string') {
+  if (!content || typeof content !== 'string') {
         throw new Error('Reponse OpenAI invalide: contenu manquant')
-      }
+  }
 
-      let parsed: any
-      try {
-        parsed = JSON.parse(content)
+  let parsed: any
+  try {
+    parsed = JSON.parse(content)
       } catch (parseError) {
         throw new Error(`JSON OpenAI non parseable: ${parseError}`)
       }
@@ -192,9 +192,9 @@ ${annonce}
       // Validation basique de la structure
       if (!parsed.fiche || !parsed.score_global || !parsed.avis_acheteur) {
         throw new Error('Structure JSON OpenAI invalide')
-      }
+  }
 
-      return parsed
+  return parsed
     } catch (error: any) {
       if (error.name === 'AbortError') {
         if (attempt < retries) {
@@ -296,14 +296,15 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   const UNLIMITED_EMAIL = 'saas.ia.automobile@gmail.com'
   const isUnlimitedUser = email && email.toLowerCase().trim() === UNLIMITED_EMAIL.toLowerCase()
 
-  // --- Gestion des crédits payants et quotas ---
+  // --- Gestion des crédits payants et quotas (REFACTORISÉ avec RPC) ---
   const quotaKey = email || 'no-email'
   let currentCount = 0
   let usedPaidCredit = false
+  let creditResult: any = null
   
   // Si utilisateur illimité, on skip complètement le système de quota et crédits
   if (!isUnlimitedUser && email) {
-    // ÉTAPE 1 : Vérifier les crédits payants (prioritaire)
+    // ÉTAPE 1 : Tenter de consommer un crédit payant via RPC (prioritaire)
     const supabaseServiceRole = createClient(
       env.SUPABASE_URL,
       env.SUPABASE_SERVICE_ROLE_KEY,
@@ -312,91 +313,85 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
     console.log('[Analyse] Checking paid credits for:', email)
 
-    const { data: paidPlans, error: paidError } = await supabaseServiceRole
-      .from('paid_plans')
-      .select('*')
+    // Récupérer le user_id depuis l'email
+    const { data: userData, error: userError } = await supabaseServiceRole
+      .from('auth.users')
+      .select('id')
       .eq('email', email.trim())
-      .gt('credits_remaining', 0)
-      .order('created_at', { ascending: true }) // Consommer les plus anciens d'abord
+      .maybeSingle()
 
-    if (paidError) {
-      console.error('[Analyse] Error fetching paid_plans:', paidError)
-      // On continue vers le quota démo en cas d'erreur
-    } else if (paidPlans && paidPlans.length > 0) {
-      // Utiliser le premier plan avec des crédits
-      const plan = paidPlans[0]
-      
-      console.log('[Analyse] Using paid credit:', {
-        planId: plan.id,
-        planType: plan.plan_type,
-        creditsRemaining: plan.credits_remaining,
+    if (userError) {
+      console.error('[Analyse] Error fetching user by email:', userError)
+      // On continue vers le quota démo
+    } else if (userData) {
+      const userId = userData.id
+      console.log('[Analyse] User ID found:', userId)
+
+      // Appeler la RPC pour consommer un crédit de manière atomique
+      const { data: rpcResult, error: rpcError } = await supabaseServiceRole.rpc('consume_credit', {
+        p_user_id: userId,
       })
 
-      // Décrémenter le crédit
-      const { error: updateError } = await supabaseServiceRole
-        .from('paid_plans')
-        .update({
-          credits_remaining: plan.credits_remaining - 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', plan.id)
-
-      if (updateError) {
-        console.error('[Analyse] Error updating paid_plans:', updateError)
-        return jsonResponse(
-          { ok: false, error: 'CREDIT_UPDATE_ERROR', message: 'Erreur lors de la consommation du crédit' },
-          500
-        )
+      if (rpcError) {
+        console.error('[Analyse] Error calling consume_credit RPC:', rpcError)
+        // On continue vers le quota démo
+      } else if (rpcResult && rpcResult.success) {
+        usedPaidCredit = true
+        creditResult = rpcResult
+        console.log('[Analyse] ✅ Paid credit consumed via RPC:', rpcResult)
+      } else {
+        console.log('[Analyse] No paid credits available:', rpcResult?.error || 'Unknown')
+        // On continue vers le quota démo
       }
-
-      usedPaidCredit = true
-      console.log('[Analyse] Paid credit consumed successfully')
+    } else {
+      console.log('[Analyse] User not found for email:', email)
+      // Utilisateur non inscrit, on passe au quota démo
     }
   }
 
   // ÉTAPE 2 : Si pas de crédit payant utilisé, vérifier le quota démo
   if (!isUnlimitedUser && !usedPaidCredit) {
-    const { data: quotaRow, error: quotaError } = await supabase
-      .from('demo_quota')
-      .select('*')
-      .eq('email', quotaKey)
-      .maybeSingle()
+  const { data: quotaRow, error: quotaError} = await supabase
+    .from('demo_quota')
+    .select('*')
+    .eq('email', quotaKey)
+    .maybeSingle()
 
-    if (quotaError && quotaError.code !== 'PGRST116') {
-      return jsonResponse({ ok: false, error: 'QUOTA_READ_ERROR' }, 500)
-    }
+  if (quotaError && quotaError.code !== 'PGRST116') {
+    return jsonResponse({ ok: false, error: 'QUOTA_READ_ERROR' }, 500)
+  }
 
     currentCount = quotaRow?.count ?? 0
-    if (currentCount >= MAX_DEMO) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: 'QUOTA_EXCEEDED',
-          quota_count: currentCount,
-          quota_limit: MAX_DEMO,
-        },
-        429,
-      )
-    }
+  if (currentCount >= MAX_DEMO) {
+    return jsonResponse(
+      {
+        ok: false,
+        error: 'QUOTA_EXCEEDED',
+        quota_count: currentCount,
+        quota_limit: MAX_DEMO,
+      },
+      429,
+    )
+  }
 
-    // Insert / update du compteur
-    let writeError = null
-    if (!quotaRow) {
-      const { error } = await supabase.from('demo_quota').insert({
-        email: quotaKey,
-        count: currentCount + 1,
-      })
-      writeError = error
-    } else {
-      const { error } = await supabase
-        .from('demo_quota')
-        .update({ count: currentCount + 1 })
-        .eq('email', quotaKey)
-      writeError = error
-    }
+  // Insert / update du compteur
+  let writeError = null
+  if (!quotaRow) {
+    const { error } = await supabase.from('demo_quota').insert({
+      email: quotaKey,
+      count: currentCount + 1,
+    })
+    writeError = error
+  } else {
+    const { error } = await supabase
+      .from('demo_quota')
+      .update({ count: currentCount + 1 })
+      .eq('email', quotaKey)
+    writeError = error
+  }
 
-    if (writeError) {
-      return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
+  if (writeError) {
+    return jsonResponse({ ok: false, error: 'QUOTA_WRITE_ERROR' }, 500)
     }
   } else {
     console.log('🌟 Utilisateur illimite detecte:', email)
@@ -423,11 +418,11 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   const { data: insertData, error: insertError } = await supabase
     .from('analyses')
     .insert({
-      email: quotaKey,
-      input_raw: annonce,
-      output_json: analyse,
-      model: modelUsed,
-    })
+    email: quotaKey,
+    input_raw: annonce,
+    output_json: analyse,
+    model: modelUsed,
+  })
     .select('id')
 
   if (insertError) {
@@ -533,11 +528,13 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     analysisId: analysisId,
     quota: isUnlimitedUser ? {
       count: 0,
-      limit: -1, // -1 indique illimité
+      limit: -1,
       unlimited: true,
     } : usedPaidCredit ? {
       source: 'paid',
-      message: 'Crédit payant utilisé',
+      message: creditResult?.unlimited ? 'Plan illimité' : 'Crédit payant utilisé',
+      remaining: creditResult?.remaining ?? null,
+      unlimited: creditResult?.unlimited ?? false,
     } : {
       count: currentCount + 1,
       limit: MAX_DEMO,

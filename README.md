@@ -1,91 +1,36 @@
-# Check Ton Véhicule
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Application SaaS d'analyse IA pour véhicules d'occasion. Analyse d'annonces, détection de risques, et aide à la négociation.
+## Getting Started
 
-## 🚀 Technologies
-
-- **Frontend** : Next.js 16 (Static Export), React 19, TypeScript, Tailwind CSS
-- **Backend** : Cloudflare Pages Functions
-- **Base de données** : Supabase (PostgreSQL)
-- **IA** : OpenAI API (GPT-4o-mini)
-- **Email** : Resend
-- **Analytics** : Plausible
-
-## 📋 Prérequis
-
-- Node.js 18+ et npm
-- Compte Cloudflare avec accès à Pages
-- Compte Supabase
-- Compte OpenAI avec clé API
-- Compte Resend avec domaine vérifié
-
-## 🛠️ Installation locale
+First, run the development server:
 
 ```bash
-# Installer les dépendances
-npm install
-
-# Lancer le serveur de développement
 npm run dev
-
-# Build pour production
-npm run build
-
-# Linter
-npm run lint
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## 📚 Documentation
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Guide complet de déploiement
-- **[ENV_VARIABLES.md](./ENV_VARIABLES.md)** - Configuration des variables d'environnement
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## 🚢 Déploiement
+## Learn More
 
-### Déploiement sur Cloudflare Pages
+To learn more about Next.js, take a look at the following resources:
 
-1. **Préparer la base de données** : Suivez les instructions dans `DEPLOYMENT.md`
-2. **Configurer les variables d'environnement** : Voir `ENV_VARIABLES.md`
-3. **Connecter votre repository** à Cloudflare Pages
-4. **Configurer le build** :
-   - Build command: `npm run build`
-   - Build output: `out`
-   - Framework: Next.js (Static HTML Export)
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-Pour plus de détails, consultez **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## 📁 Structure du projet
+## Deploy on Vercel
 
-```
-web/
-├── functions/api/          # Cloudflare Pages Functions
-│   ├── analyse.ts         # Analyse IA d'annonces
-│   ├── historique.ts      # Historique des analyses
-│   ├── rapport.ts         # Détail d'un rapport
-│   └── join.ts            # Inscription liste d'attente
-├── src/app/               # Next.js App Router
-│   ├── page.tsx           # Landing page
-│   └── mon-espace/        # Espace utilisateur
-├── public/                # Assets statiques
-└── out/                   # Build output (généré)
-```
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-## 🔧 Configuration
-
-Toutes les variables d'environnement sont documentées dans **[ENV_VARIABLES.md](./ENV_VARIABLES.md)**.
-
-## 📝 Scripts disponibles
-
-- `npm run dev` - Serveur de développement
-- `npm run build` - Build de production
-- `npm run lint` - Vérification du code
-
-## 🐛 Dépannage
-
-Consultez la section "Dépannage" dans **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
-
-## 📄 Licence
-
-Propriétaire - Tous droits réservés
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

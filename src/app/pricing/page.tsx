@@ -6,9 +6,9 @@ import Link from 'next/link'
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
 
 type Plan = {
-  id: 'single' | 'pack5' | 'pack30'
+  id: 'SINGLE' | 'PACK' | 'UNLIMITED'
   name: string
-  credits: number
+  description: string
   price: number
   popular?: boolean
   features: string[]
@@ -16,22 +16,22 @@ type Plan = {
 
 const PLANS: Plan[] = [
   {
-    id: 'single',
+    id: 'SINGLE',
     name: 'Analyse Unique',
-    credits: 1,
+    description: '1 analyse IA complète',
     price: 4.9,
     features: [
       '1 analyse IA complète',
       'Rapport PDF téléchargeable',
       'Score sur 100',
       'Checklist d\'inspection',
-      'Valable 6 mois',
+      'Crédit sans expiration',
     ],
   },
   {
-    id: 'pack5',
+    id: 'PACK',
     name: 'Pack 5 Analyses',
-    credits: 5,
+    description: '5 analyses IA complètes',
     price: 14.9,
     popular: true,
     features: [
@@ -39,23 +39,22 @@ const PLANS: Plan[] = [
       'Rapports PDF téléchargeables',
       'Score sur 100',
       'Checklist d\'inspection',
-      'Économisez 9,60 €',
+      'Économisez 9,60 € (vs 5×Single)',
       'Valable 1 an',
     ],
   },
   {
-    id: 'pack30',
-    name: 'Pack 30 Analyses',
-    credits: 30,
+    id: 'UNLIMITED',
+    name: 'Pack Illimité',
+    description: 'Analyses illimitées pendant 30 jours',
     price: 59,
     features: [
-      '30 analyses IA complètes',
+      'Analyses IA illimitées',
       'Rapports PDF téléchargeables',
       'Score sur 100',
       'Checklist d\'inspection',
-      'Économisez 88 €',
-      'Idéal professionnels',
-      'Valable 1 an',
+      'Idéal pour professionnels',
+      'Valable 30 jours',
     ],
   },
 ]
@@ -86,7 +85,7 @@ export default function PricingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          planType: planId,
+          planType: planId, // 'SINGLE', 'PACK', ou 'UNLIMITED'
         }),
       })
 
@@ -120,18 +119,14 @@ export default function PricingPage() {
 
       {/* Hero */}
       <section className="px-6 py-16 text-center max-w-4xl mx-auto">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Choisissez votre formule
-        </h1>
+        <h1 className="text-4xl md:text-5xl font-bold mb-4">Choisissez votre formule</h1>
         <p className="text-xl text-gray-600 mb-8">
           Analysez vos annonces de véhicules d'occasion en toute confiance
         </p>
 
         {/* Email input */}
         <div className="max-w-md mx-auto mb-12">
-          <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
-            Votre email
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2 text-left">Votre email</label>
           <input
             type="email"
             value={email}
@@ -142,9 +137,7 @@ export default function PricingPage() {
             placeholder="vous@exemple.com"
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none"
           />
-          {error && (
-            <p className="mt-2 text-sm text-red-600 text-left">{error}</p>
-          )}
+          {error && <p className="mt-2 text-sm text-red-600 text-left">{error}</p>}
         </div>
       </section>
 
@@ -172,10 +165,7 @@ export default function PricingPage() {
                   <span className="text-5xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
                   <span className="text-2xl text-gray-600">€</span>
                 </div>
-                <p className="text-sm text-gray-500">
-                  {plan.credits} analyse{plan.credits > 1 ? 's' : ''}
-                  {plan.credits > 1 && ` (${(plan.price / plan.credits).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€/analyse)`}
-                </p>
+                <p className="text-sm text-gray-500">{plan.description}</p>
               </div>
 
               <ul className="space-y-3 mb-8">
@@ -187,12 +177,7 @@ export default function PricingPage() {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{feature}</span>
                   </li>
@@ -243,12 +228,7 @@ export default function PricingPage() {
         {/* Info */}
         <div className="mt-12 p-6 bg-blue-50 rounded-lg border border-blue-200 max-w-3xl mx-auto">
           <h4 className="font-semibold mb-2 flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-blue-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -259,12 +239,11 @@ export default function PricingPage() {
             Paiement sécurisé via Stripe
           </h4>
           <p className="text-sm text-gray-700">
-            Vos crédits sont activés immédiatement après paiement. Vous recevrez une confirmation par email.
-            Les crédits sont liés à votre adresse email.
+            Vos crédits sont activés immédiatement après paiement. Vous recevrez une confirmation par email. Les
+            crédits sont liés à votre adresse email.
           </p>
         </div>
       </section>
     </main>
   )
 }
-

@@ -5,7 +5,7 @@ type EnvBindings = {
   SUPABASE_SERVICE_ROLE_KEY: string
 }
 
-type CFContext = {
+type PagesContext = {
   request: Request
   env: EnvBindings
 }
@@ -17,34 +17,35 @@ const CORS_HEADERS = {
   'access-control-allow-headers': 'Content-Type',
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(status: number, body: any) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'Content-Type': 'application/json',
+      'content-type': 'application/json; charset=utf-8',
       ...CORS_HEADERS,
     },
   })
 }
 
-export const onRequest = async (context: CFContext): Promise<Response> => {
+export const onRequest = async (context: PagesContext): Promise<Response> => {
   const { request, env } = context
 
   // Préflight CORS
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS })
+    return new Response(null, {
+      status: 204,
+      headers: CORS_HEADERS,
+    })
   }
 
-  // Accepte GET et POST pour flexibilité
-  if (request.method !== 'GET' && request.method !== 'POST') {
-    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
-  }
+  // IMPORTANT : on ne bloque plus sur la méthode
+  // (on accepte GET et POST, Cloudflare ou le navigateur peuvent parfois adapter la méthode)
 
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
 
-  if (!id || id.trim().length === 0) {
-    return jsonResponse({ ok: false, error: 'MISSING_ID', message: 'Identifiant de rapport requis' }, 400)
+  if (!id) {
+    return jsonResponse(400, { ok: false, error: 'MISSING_ID' })
   }
 
   const supabase = createClient(
@@ -59,63 +60,40 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     const { data, error } = await supabase
       .from('analyses')
       .select('output_json')
-      .eq('id', id.trim())
+      .eq('id', id)
       .maybeSingle()
 
     if (error) {
-      console.error('Supabase error /api/rapport:', error)
-      return jsonResponse(
-        {
-          ok: false,
-          error: 'DB_ERROR',
-          message: 'Erreur lors de la récupération du rapport',
-        },
-        500,
-      )
+      console.error('Supabase error /api/rapport', error)
+      return jsonResponse(500, {
+        ok: false,
+        error: 'DB_ERROR',
+        detail: error.message,
+      })
     }
 
     if (!data || !data.output_json) {
-      return jsonResponse(
-        {
-          ok: false,
-          error: 'RAPPORT_NOT_FOUND',
-          message: 'Rapport introuvable pour cet identifiant',
-        },
-        404,
-      )
+      return jsonResponse(404, {
+        ok: false,
+        error: 'RAPPORT_NOT_FOUND',
+      })
     }
 
-    let output: any
-    try {
-      output =
-        typeof data.output_json === 'string'
-          ? JSON.parse(data.output_json)
-          : data.output_json
-    } catch (parseError) {
-      console.error('JSON parse error /api/rapport:', parseError)
-      return jsonResponse(
-        {
-          ok: false,
-          error: 'INVALID_DATA',
-          message: 'Données du rapport corrompues',
-        },
-        500,
-      )
-    }
+    const output =
+      typeof data.output_json === 'string'
+        ? JSON.parse(data.output_json)
+        : data.output_json
 
-    return jsonResponse({
+    return jsonResponse(200, {
       ok: true,
       data: output,
     })
   } catch (e: any) {
-    console.error('Unexpected error /api/rapport:', e)
-    return jsonResponse(
-      {
-        ok: false,
-        error: 'UNEXPECTED_ERROR',
-        message: 'Erreur inattendue lors de la récupération du rapport',
-      },
-      500,
-    )
+    console.error('Unexpected /api/rapport', e)
+    return jsonResponse(500, {
+      ok: false,
+      error: 'UNEXPECTED_ERROR',
+      detail: e?.message ?? String(e),
+    })
   }
 }

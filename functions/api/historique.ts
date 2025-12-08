@@ -2,60 +2,66 @@
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 
+// --- Définition minimale pour le build local Next.js ---
+// Cloudflare Pages fournit le vrai type à l'exécution.
+type PagesFunction<Env = unknown> = (context: {
+  request: Request
+  env: Env
+}) => Promise<Response> | Response
+// ------------------------------------------------------
+
 type EnvBindings = {
   SUPABASE_URL: string
   SUPABASE_ANON_KEY: string
 }
 
-type CFContext = {
-  request: Request
-  env: EnvBindings
-}
-
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-}
-
 const requestSchema = z.object({
-  email: z.string().email('Email invalide'),
+  email: z.string().email(),
 })
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
+function jsonResponse(data: unknown, init?: ResponseInit) {
+  return new Response(JSON.stringify(data), {
+    status: init?.status ?? 200,
     headers: {
       'Content-Type': 'application/json',
-      ...CORS_HEADERS,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      ...(init?.headers || {}),
     },
   })
 }
 
-export const onRequest = async (context: CFContext): Promise<Response> => {
+export const onRequest: PagesFunction<EnvBindings> = async (context) => {
   const { request, env } = context
 
   // Préflight CORS
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS_HEADERS })
+    return jsonResponse({}, { status: 200 })
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ ok: false, error: 'METHOD_NOT_ALLOWED' }, 405)
+    return jsonResponse(
+      { ok: false, error: 'METHOD_NOT_ALLOWED' },
+      { status: 405 }
+    )
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return jsonResponse({ ok: false, error: 'INVALID_JSON' }, 400)
+    return jsonResponse(
+      { ok: false, error: 'INVALID_JSON' },
+      { status: 400 }
+    )
   }
 
   const parse = requestSchema.safeParse(body)
   if (!parse.success) {
     return jsonResponse(
       { ok: false, error: 'INVALID_PAYLOAD', details: parse.error.flatten() },
-      400,
+      { status: 400 }
     )
   }
 
@@ -68,15 +74,14 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   const { data, error } = await supabase
     .from('analyses')
     .select('id, created_at, input_raw, output_json')
-    .eq('email', email.trim().toLowerCase())
+    .eq('email', email)
     .order('created_at', { ascending: false })
     .limit(20)
 
   if (error) {
-    console.error('Supabase error /api/historique:', error)
     return jsonResponse(
-      { ok: false, error: 'DB_ERROR', message: 'Erreur lors de la récupération de l\'historique' },
-      500,
+      { ok: false, error: `DB_ERROR: ${error.message}` },
+      { status: 500 }
     )
   }
 

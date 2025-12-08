@@ -3,8 +3,8 @@ import Stripe from 'stripe'
 type EnvBindings = {
   STRIPE_SECRET_KEY: string
   STRIPE_PRICE_SINGLE: string
-  STRIPE_PRICE_PACK5: string
-  STRIPE_PRICE_PACK30: string
+  STRIPE_PRICE_PACK: string
+  STRIPE_PRICE_UNLIMITED: string
 }
 
 type CFContext = {
@@ -41,29 +41,23 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
   }
 
   try {
-    const body = await request.json() as { email?: string; planType?: string }
-    const { email, planType } = body
+    const body = (await request.json()) as { email?: string; planType?: string; userId?: string }
+    const { email, planType, userId } = body
 
     // Validation
     if (!email || !email.trim()) {
-      return jsonResponse(
-        { ok: false, error: 'MISSING_EMAIL', message: 'Email requis' },
-        400
-      )
+      return jsonResponse({ ok: false, error: 'MISSING_EMAIL', message: 'Email requis' }, 400)
     }
 
-    if (!planType || !['single', 'pack5', 'pack30'].includes(planType)) {
-      return jsonResponse(
-        { ok: false, error: 'INVALID_PLAN', message: 'Plan invalide' },
-        400
-      )
+    if (!planType || !['SINGLE', 'PACK', 'UNLIMITED'].includes(planType)) {
+      return jsonResponse({ ok: false, error: 'INVALID_PLAN', message: 'Plan invalide' }, 400)
     }
 
     // Mapper planType → Stripe Price ID
     const priceIdMap: Record<string, string> = {
-      single: env.STRIPE_PRICE_SINGLE,
-      pack5: env.STRIPE_PRICE_PACK5,
-      pack30: env.STRIPE_PRICE_PACK30,
+      SINGLE: env.STRIPE_PRICE_SINGLE,
+      PACK: env.STRIPE_PRICE_PACK,
+      UNLIMITED: env.STRIPE_PRICE_UNLIMITED,
     }
 
     const priceId = priceIdMap[planType]
@@ -81,7 +75,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    // Créer la session Stripe Checkout
+    // Créer la session Stripe Checkout avec metadata enrichie
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: email.trim(),
@@ -93,13 +87,14 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       ],
       metadata: {
         email: email.trim(),
-        plan_type: planType,
+        plan_type: planType, // SINGLE, PACK ou UNLIMITED
+        user_id: userId || '', // userId si disponible (pour utilisateurs authentifiés)
       },
       success_url: `https://www.checktonvehicule.fr/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://www.checktonvehicule.fr/billing/cancel`,
     })
 
-    console.log('[Stripe] Session created:', session.id)
+    console.log('[Stripe] Session created:', session.id, 'planType:', planType)
 
     return jsonResponse({
       ok: true,
@@ -118,4 +113,3 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     )
   }
 }
-

@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import type React from 'react'
 import Link from 'next/link'
-import AnalysisResult from '@/components/AnalysisResult'
-import SimpleAnalysisResult from '@/components/SimpleAnalysisResult'
 
 export default function Home() {
   // --- Etat formulaire liste d’attente ---
@@ -372,16 +370,87 @@ export default function Home() {
 
           {/* Résultat de l'analyse */}
           {demoStatus === 'ok' && demoResult && (
-            <>
-              {/* Afficher le nouveau composant si prix_cible ou checklist_inspection présent */}
-              {(demoResult.prix_cible || demoResult.checklist_inspection) ? (
-                <div className="mt-6">
-                  <AnalysisResult data={demoResult} analysisId={demoAnalysisId || undefined} />
+            <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
+              <h3 className="text-lg font-semibold text-green-900 mb-3">✅ Analyse terminée</h3>
+              
+              {/* Score */}
+              {note !== null && (
+                <div className="mb-4 p-3 bg-white rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">Score global</span>
+                    <span className={`text-2xl font-bold ${
+                      note >= 75 ? 'text-green-600' : note >= 50 ? 'text-orange-600' : 'text-red-600'
+                    }`}>
+                      {note}/100
+                    </span>
+                  </div>
+                  {scoreObj.profil_achat && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Profil : <span className="font-semibold">{scoreObj.profil_achat}</span>
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <SimpleAnalysisResult data={demoResult} analysisId={demoAnalysisId || undefined} />
               )}
-            </>
+
+              {/* Recommandation */}
+              {recommendation && (
+                <div className="mb-4 p-3 bg-white rounded-lg border">
+                  <p className="text-sm text-gray-700">{recommendation}</p>
+                </div>
+              )}
+
+              {/* Risques */}
+              {risques.length > 0 && (
+                <div className="mb-4 p-3 bg-white rounded-lg border">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                    Risques détectés ({risques.length})
+                  </h4>
+                  <ul className="space-y-2">
+                    {risques.slice(0, 3).map((risque: any, idx: number) => (
+                      <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                        <span className={`inline-block w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                          risque.niveau === 'élevé' ? 'bg-red-500' :
+                          risque.niveau === 'modéré' ? 'bg-orange-500' : 'bg-yellow-500'
+                        }`}></span>
+                        <span><strong>{risque.type}</strong> : {risque.detail}</span>
+                      </li>
+                    ))}
+                    {risques.length > 3 && (
+                      <li className="text-sm text-gray-500 italic">
+                        + {risques.length - 3} autre{risques.length - 3 > 1 ? 's' : ''} risque{risques.length - 3 > 1 ? 's' : ''}...
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="space-y-2">
+                {demoAnalysisId && (
+                  <>
+                    <Link
+                      href={`/rapport?id=${demoAnalysisId}${demoEmail ? `&email=${encodeURIComponent(demoEmail)}` : ''}`}
+                      className="block w-full text-center px-4 py-2 bg-black text-white rounded-lg font-semibold hover:opacity-90"
+                    >
+                      📄 Voir le rapport complet
+                    </Link>
+                    <a
+                      href={`/rapport/print?id=${demoAnalysisId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full text-center px-4 py-2 bg-white text-black border border-gray-300 rounded-lg font-semibold hover:bg-gray-50"
+                    >
+                      📥 Télécharger PDF
+                    </a>
+                  </>
+                )}
+                {demoEmail && (
+                  <p className="text-xs text-gray-600 text-center mt-2">
+                    Un email avec le rapport complet a été envoyé à <strong>{demoEmail}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </section>

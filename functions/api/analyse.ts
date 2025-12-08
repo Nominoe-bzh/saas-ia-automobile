@@ -232,7 +232,7 @@ const demoStub: AnalyseResult = {
   risques: [
     {
       type: 'mecanique',
-      niveau: 'modere',
+      niveau: 'modéré',
       detail:
         "Demo uniquement : les risques reels seront calcules par l'IA sur la base de votre annonce.",
       recommandation:

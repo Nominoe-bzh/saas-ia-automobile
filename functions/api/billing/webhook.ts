@@ -16,6 +16,9 @@ type CFContext = {
 export const onRequest = async (context: CFContext): Promise<Response> => {
   const { request, env } = context
 
+  // 🚀 LOG DE TRACING : Preuve que la nouvelle version est déployée
+  console.log('🚀 WEBHOOK STRIPE V2 - FIX ASYNC CHARGÉ')
+
   if (request.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }

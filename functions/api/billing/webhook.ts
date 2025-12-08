@@ -38,6 +38,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     })
 
     // Vérifier la signature (async pour Cloudflare Workers)
+    console.log('[Webhook] 🔥 USING constructEventAsync - VERSION DEPLOYED AT', new Date().toISOString())
     let event: Stripe.Event
     try {
       event = await stripe.webhooks.constructEventAsync(
@@ -46,7 +47,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
         env.STRIPE_WEBHOOK_SECRET
       )
     } catch (err: any) {
-      console.error('[Webhook] Signature verification failed:', err.message)
+      console.error('[Webhook] ❌ Signature verification failed:', err.message)
       return new Response(`Webhook signature verification failed: ${err.message}`, {
         status: 400,
       })

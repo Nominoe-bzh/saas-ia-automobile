@@ -75,6 +75,15 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
+    // Préparer les metadata
+    const metadata = {
+      email: email.trim(),
+      plan_type: planType, // SINGLE, PACK ou UNLIMITED
+      userId: userId || '', // userId si disponible (pour utilisateurs authentifiés)
+    }
+
+    console.log('[Stripe] Creating session with metadata:', JSON.stringify(metadata))
+
     // Créer la session Stripe Checkout avec metadata enrichie
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -85,11 +94,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
           quantity: 1,
         },
       ],
-      metadata: {
-        email: email.trim(),
-        plan_type: planType, // SINGLE, PACK ou UNLIMITED
-        user_id: userId || '', // userId si disponible (pour utilisateurs authentifiés)
-      },
+      metadata,
       success_url: `https://www.checktonvehicule.fr/billing/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://www.checktonvehicule.fr/billing/cancel`,
     })

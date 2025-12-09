@@ -81,8 +81,11 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session
 
+      // Log des metadata pour debugging
+      console.log('[Webhook] Session metadata:', JSON.stringify(session.metadata))
+
       const email = session.customer_email || session.metadata?.email
-      const userId = session.metadata?.user_id
+      const userId = session.metadata?.userId // CORRECTION: userId au lieu de user_id
       const planTypeRaw = session.metadata?.plan_type // 'SINGLE', 'PACK', 'UNLIMITED'
       const sessionId = session.id
       const paymentIntentId =
@@ -116,21 +119,39 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
         auth: { persistSession: false },
       })
 
-      // 1. Récupérer le user_id depuis l'email si non fourni dans metadata
+      // 1. Récupérer ou créer l'utilisateur
       let finalUserId = userId
-      if (!finalUserId) {
-        const { data: userData, error: userError } = await supabase
-          .from('auth.users')
-          .select('id')
-          .eq('email', email.trim())
-          .maybeSingle()
 
-        if (userError || !userData) {
-          console.error('[Webhook] User not found for email:', email, userError)
-          return new Response('User not found', { status: 404 })
+      if (!finalUserId || finalUserId === '') {
+        console.log('[Webhook] No userId in metadata, looking up or creating user for:', email.trim())
+
+        // Essayer de récupérer l'utilisateur existant via l'API Admin
+        const { data: existingUsers } = await supabase.auth.admin.listUsers()
+        const existingUser = existingUsers?.users?.find(u => u.email === email.trim())
+
+        if (existingUser) {
+          console.log('[Webhook] User found:', existingUser.id)
+          finalUserId = existingUser.id
+        } else {
+          // Créer un nouvel utilisateur
+          console.log('[Webhook] Creating new user for:', email.trim())
+          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+            email: email.trim(),
+            email_confirm: true,
+            user_metadata: {
+              created_via: 'stripe_payment',
+              stripe_customer_id: session.customer,
+            },
+          })
+
+          if (createError || !newUser?.user) {
+            console.error('[Webhook] Error creating user:', createError)
+            return new Response('Error creating user', { status: 500 })
+          }
+
+          finalUserId = newUser.user.id
+          console.log('[Webhook] New user created:', finalUserId)
         }
-
-        finalUserId = userData.id
       }
 
       console.log('[Webhook] User ID resolved:', finalUserId)

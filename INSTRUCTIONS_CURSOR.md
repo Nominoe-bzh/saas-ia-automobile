@@ -1,65 +1,45 @@
-# ✅ INSTRUCTIONS_CURSOR.md
+# 🎯 INSTRUCTIONS CURSOR - RÔLES ET RESPONSABILITÉS
 
-# 🧠 RÔLE DE CURSOR DANS LE PROJET
+---
 
-Cursor agit comme **INGÉNIEUR IA / FULLSTACK** du SaaS IA Automobile.
+## 👥 **ÉQUIPE DE DÉVELOPPEMENT**
 
-Il ne prend **jamais** d'initiative stratégique. Il **exécute** uniquement la roadmap définie par ChatGPT.
+### **GEMINI** - Auditeur / Consultant
+- Revue de l'architecture et de la sécurité
+- Validation des choix techniques
+- Audits de conformité business
 
-# 🧠 STACK TECHNIQUE OBLIGATOIRE (STRICT)
+### **CHATGPT** - Stratège
+- Définition de la vision produit
+- Roadmap et priorisation
+- Stratégie business et pricing
 
-Cursor **doit respecter strictement** la stack imposée :
+### **CURSOR** - Ingénieur de Développement Logiciel
+- Implémentation technique
+- Tests et validation
+- Déploiement et maintenance
+- Exécution des audits demandés
 
-* **Next.js 16.0.1 / App Router** (Bleeding Edge)
-* **React 19** (Server Components par défaut)
-* **TypeScript strict**
-* **Tailwind CSS v4**
-* **Supabase (DB + RLS + Auth)**
-* **Stripe Checkout (paiements)**
-* **Cloudflare Pages Functions** (API Serverless / Edge)
-* **OpenAI GPT-4.1-mini**
+---
 
-# 🧠 FORMAT OBLIGATOIRE DES SPRINTS
+## 📝 **PHASE ACTUELLE : VALIDATION SPRINT 7**
 
-Cursor doit recevoir un sprint **uniquement sous ce format** :
+**Statut :** Déploiement réussi ✅  
+**Objectif :** Audit complet de la monétisation (infrastructure + flux de paiement)
 
-1. **Objectif**
-2. **User Stories**
-3. **Modifications Base de Données (Supabase)**
-4. **API Endpoints (Cloudflare / Next.js)**
-5. **Frontend (Next.js - App Router)**
-6. **Critères d'acceptation**
+**Responsable :** CURSOR (Ingénieur)  
+**Demandeur :** GEMINI (Auditeur)
 
-# 🧠 ROADMAP TECHNIQUE
+---
 
-### ✔ Sprints déjà réalisés :
+## ✅ **ACTIONS EN COURS**
 
-1–5 : Analyse IA, extraction, prix, checklist, verdict
-6 : Génération PDF Rapport Expert (Validé)
+- [ ] ÉTAPE 1 : Vérification de l'infrastructure (tables, RLS, schéma)
+- [ ] ÉTAPE 2 : Test du flux de paiement (end-to-end)
+- [ ] ÉTAPE 3 : Test de protection (quota 0)
+- [ ] RAPPORT FINAL : Synthèse succès/échec
 
-### 🔥 Sprint ACTUEL :
+---
 
-**SPRINT 7 → Auth + Stripe + Monétisation**
-
-### 🔥 Sprints suivants :
-
-8 : Dashboard utilisateur
-9 : SEO automatique
-10 : API B2B
-
-# 🧠 RÈGLES FONDAMENTALES
-
-1. **Ne jamais inventer une fonctionnalité** hors sprint.
-2. **Ne jamais modifier la stack** (pas de librairies Node.js incompatibles Edge).
-3. **Toujours vérifier** que le code compile avant de confirmer.
-4. **Respecter le modèle de données** Supabase défini.
-
-# 🧠 CONDUITE EN CAS D'ERREUR
-
-Si Cursor propose une alternative hors-stack ou hors-sprint : **REFUS SYSTÉMATIQUE**.
-
-Tu dois appliquer exactement les spécifications fournies par le Product Manager (ChatGPT).
-
-
-
-
+**Dernière mise à jour :** 2025-12-09  
+**Sprint :** 7 - Monétisation

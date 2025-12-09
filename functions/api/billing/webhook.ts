@@ -61,7 +61,7 @@ export const onRequest = async (context: CFContext): Promise<Response> => {
 
     // Initialiser Stripe
     const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18.acacia',
+      apiVersion: '2025-11-17.clover',
       // @ts-ignore
       httpClient: Stripe.createFetchHttpClient(),
     })

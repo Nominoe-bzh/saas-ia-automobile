@@ -195,11 +195,11 @@ export default function Home() {
         <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
           Check Ton Véhicule
         </h1>
-        <p className="mt-4 text-lg md:text-xl text-gray-600">
-          L’assistant IA qui sécurise l’achat de votre voiture d’occasion.
+        <p className="mt-4 text-lg md:text-xl text-gray-900">
+          L'assistant IA qui sécurise l'achat de votre voiture d'occasion.
         </p>
-        <p className="mt-2 text-sm text-gray-500">
-          Analyse d’annonce, détection de risques, aide à la négociation — objectif&nbsp;:
+        <p className="mt-2 text-sm text-gray-900">
+          Analyse d'annonce, détection de risques, aide à la négociation — objectif&nbsp;:
           économiser 500 à 2 000&nbsp;€ sur le prix final.
         </p>
       </section>
@@ -207,21 +207,21 @@ export default function Home() {
       {/* Features */}
       <section className="px-6 py-6 max-w-5xl mx-auto grid md:grid-cols-3 gap-6">
         <div className="rounded-2xl border p-6">
-          <h3 className="font-semibold">Analyse d’annonce</h3>
-          <p className="text-sm text-gray-600 mt-2">
-            L’IA repère les incohérences, oublis suspects, signaux rouges.
+          <h3 className="font-semibold">Analyse d'annonce</h3>
+          <p className="text-sm text-gray-900 mt-2">
+            L'IA repère les incohérences, oublis suspects, signaux rouges.
           </p>
         </div>
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Négociation assistée</h3>
-          <p className="text-sm text-gray-600 mt-2">
-            Arguments chiffrés basés sur le marché, l’historique et les risques détectés.
+          <p className="text-sm text-gray-900 mt-2">
+            Arguments chiffrés basés sur le marché, l'historique et les risques détectés.
           </p>
         </div>
         <div className="rounded-2xl border p-6">
           <h3 className="font-semibold">Économie potentielle</h3>
-          <p className="text-sm text-gray-600 mt-2">
-            500–2 000&nbsp;€ économisés en moyenne en évitant les “mauvaises affaires”.
+          <p className="text-sm text-gray-900 mt-2">
+            500–2 000&nbsp;€ économisés en moyenne en évitant les "mauvaises affaires".
           </p>
         </div>
       </section>
@@ -240,8 +240,8 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-center">
             Rejoindre la liste d’attente
           </h2>
-          <p className="mt-2 text-sm text-gray-600 text-center">
-            Recevez 3 analyses gratuites dès l’ouverture pour tester l’outil sur vos vraies annonces.
+          <p className="mt-2 text-sm text-gray-900 text-center">
+            Recevez 3 analyses gratuites dès l'ouverture pour tester l'outil sur vos vraies annonces.
           </p>
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
@@ -312,7 +312,7 @@ export default function Home() {
           <h2 className="text-xl font-semibold text-center">
             Tester une analyse d'annonce (démo)
           </h2>
-          <p className="mt-2 text-sm text-gray-600 text-center">
+          <p className="mt-2 text-sm text-gray-900 text-center">
             Collez une annonce Le Bon Coin, La Centrale, ou décrivez simplement le véhicule.
           </p>
           <p className="mt-1 text-xs text-gray-500 text-center">
@@ -348,8 +348,8 @@ export default function Home() {
             </button>
 
             {demoStatus === 'pending' && !demoError && (
-              <p className="mt-2 text-sm text-gray-500">
-                L’IA analyse ton annonce… Cela prend quelques secondes.
+              <p className="mt-2 text-sm text-gray-900">
+                L'IA analyse ton annonce… Cela prend quelques secondes.
               </p>
             )}
 
@@ -385,7 +385,7 @@ export default function Home() {
                     </span>
                   </div>
                   {scoreObj.profil_achat && (
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-2 text-sm text-gray-900">
                       Profil : <span className="font-semibold">{scoreObj.profil_achat}</span>
                     </p>
                   )}
@@ -445,7 +445,7 @@ export default function Home() {
                   </>
                 )}
                 {demoEmail && (
-                  <p className="text-xs text-gray-600 text-center mt-2">
+                  <p className="text-xs text-gray-900 text-center mt-2">
                     Un email avec le rapport complet a été envoyé à <strong>{demoEmail}</strong>
                   </p>
                 )}

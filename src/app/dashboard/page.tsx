@@ -107,7 +107,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <div className="text-red-500 text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Erreur</h2>
-          <p className="text-gray-600 mb-6">{error || 'Impossible de charger vos données'}</p>
+          <p className="text-gray-900 mb-6">{error || 'Impossible de charger vos données'}</p>
           <Link
             href="/"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -152,7 +152,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Tableau de bord
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-900">
             Bienvenue {data.user.email}
           </p>
         </div>
@@ -222,8 +222,8 @@ export default function DashboardPage() {
 
             {data.history.analyses.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-400 text-5xl mb-4">📋</div>
-                <p className="text-gray-600 mb-4">Aucune analyse pour le moment</p>
+                <div className="text-5xl mb-4">📋</div>
+                <p className="text-gray-900 mb-4">Aucune analyse pour le moment</p>
                 <Link
                   href="/"
                   className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
@@ -243,7 +243,7 @@ export default function DashboardPage() {
                         <h3 className="font-semibold text-gray-900">
                           {analysis.car_model || 'Véhicule'}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-900">
                           Année {analysis.year || 'Non spécifiée'}
                         </p>
                       </div>
@@ -276,8 +276,8 @@ export default function DashboardPage() {
 
             {data.history.payments.length === 0 ? (
               <div className="text-center py-12">
-                <div className="text-gray-400 text-5xl mb-4">💰</div>
-                <p className="text-gray-600 mb-4">Aucun paiement enregistré</p>
+                <div className="text-5xl mb-4">💰</div>
+                <p className="text-gray-900 mb-4">Aucun paiement enregistré</p>
                 <Link
                   href="/pricing"
                   className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                         <h3 className="font-semibold text-gray-900">
                           {getPlanLabel(payment.plan_type)}
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-900">
                           {payment.credits !== null 
                             ? `${payment.credits} crédit${payment.credits > 1 ? 's' : ''}`
                             : 'Illimité'

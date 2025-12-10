@@ -110,8 +110,8 @@ export default function MonEspacePage() {
       {/* Barre de retour */}
       <header className="px-6 py-4 border-b">
         <div className="max-w-5xl mx-auto flex items-center justify-between text-sm">
-          <Link href="/" className="text-gray-600 hover:underline">
-            ← Retour à l’accueil
+            <Link href="/" className="text-gray-900 hover:underline">
+            ← Retour à l'accueil
           </Link>
           <span className="font-semibold">Mon espace</span>
         </div>
@@ -123,8 +123,8 @@ export default function MonEspacePage() {
           <h1 className="text-2xl font-semibold text-center mb-2">
             Retrouver mes analyses
           </h1>
-          <p className="text-sm text-gray-600 text-center mb-6">
-            Saisissez l’email que vous avez utilisé pour demander vos analyses
+          <p className="text-sm text-gray-900 text-center mb-6">
+            Saisissez l'email que vous avez utilisé pour demander vos analyses
             IA.
           </p>
 

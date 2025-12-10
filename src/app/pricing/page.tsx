@@ -157,11 +157,11 @@ export default function PricingPage() {
           </Link>
           <div className="flex items-center gap-4">
             {isAuthenticated && userEmail && (
-              <div className="text-sm text-gray-600 hidden sm:inline-block">
+              <div className="text-sm text-gray-900 hidden sm:inline-block">
                 {userEmail}
               </div>
             )}
-            <Link href="/" className="text-sm text-gray-600 hover:underline">
+            <Link href="/" className="text-sm text-gray-900 hover:underline">
               ← Retour à l'accueil
             </Link>
           </div>
@@ -171,7 +171,7 @@ export default function PricingPage() {
       {/* Hero */}
       <section className="px-6 py-16 text-center max-w-4xl mx-auto">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Choisissez votre formule</h1>
-        <p className="text-xl text-gray-600 mb-8">
+        <p className="text-xl text-gray-900 mb-8">
           Analysez vos annonces de véhicules d'occasion en toute confiance
         </p>
 
@@ -219,17 +219,17 @@ export default function PricingPage() {
               )}
 
               <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                 <div className="flex items-baseline justify-center gap-1 mb-1">
-                  <span className="text-5xl font-bold">{plan.price.toLocaleString('fr-FR')}</span>
-                  <span className="text-2xl text-gray-600">€</span>
+                  <span className="text-5xl font-bold text-gray-900">{plan.price.toLocaleString('fr-FR')}</span>
+                  <span className="text-2xl text-gray-900">€</span>
                 </div>
-                <p className="text-sm text-gray-500">{plan.description}</p>
+                <p className="text-sm text-gray-900">{plan.description}</p>
               </div>
 
               <ul className="space-y-3 mb-8">
                 {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm">
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-900">
                     <svg
                       className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5"
                       fill="none"
@@ -299,7 +299,7 @@ export default function PricingPage() {
             </svg>
             Paiement sécurisé via Stripe
           </h4>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-900">
             Vos crédits sont activés immédiatement après paiement. Vous recevrez une confirmation par email.
             {isAuthenticated && ' Les crédits sont liés à votre compte.'}
           </p>

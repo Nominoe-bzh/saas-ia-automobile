@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Script from 'next/script'
+import Header from '@/components/Header'
 
 export const metadata: Metadata = {
   title: 'Check Ton Vehicule - Assistant IA pour voitures doccasion',
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body>
+        <Header />
         {children}
 
         {/* Plausible custom script */}

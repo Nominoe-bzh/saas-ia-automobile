@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/utils/supabase/client'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://www.checktonvehicule.fr'
 
@@ -60,19 +61,43 @@ const PLANS: Plan[] = [
 ]
 
 export default function PricingPage() {
-  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
-  const handleSelectPlan = async (planId: string) => {
-    if (!email || !email.trim()) {
-      setError('Merci de saisir votre email')
-      return
+  const supabase = createClient()
+
+  // Vérifier l'authentification au chargement
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user) {
+          setIsAuthenticated(true)
+          setUserEmail(session.user.email || null)
+        } else {
+          setIsAuthenticated(false)
+        }
+      } catch (error) {
+        console.error('[Pricing] Error checking auth:', error)
+        setIsAuthenticated(false)
+      } finally {
+        setCheckingAuth(false)
+      }
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email.trim())) {
-      setError('Email invalide')
+    checkAuth()
+  }, [])
+
+  const handleSelectPlan = async (planId: string) => {
+    // SÉCURITÉ : Vérifier l'authentification AVANT de permettre l'achat
+    if (!isAuthenticated || !userEmail) {
+      // Stocker le plan sélectionné et rediriger vers login
+      sessionStorage.setItem('intended_plan', planId)
+      window.location.href = `/login?next=/pricing`
       return
     }
 
@@ -80,12 +105,19 @@ export default function PricingPage() {
     setError(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('Session expirée, veuillez vous reconnecter')
+      }
+
       const res = await fetch(`${API_BASE}/api/billing/create-checkout-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim(),
-          planType: planId, // 'SINGLE', 'PACK', ou 'UNLIMITED'
+          email: userEmail,
+          planType: planId,
+          userId: session.user.id, // IMPORTANT: Passer le userId
         }),
       })
 
@@ -103,6 +135,18 @@ export default function PricingPage() {
     }
   }
 
+  // Pendant la vérification de l'authentification
+  if (checkingAuth) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       {/* Header */}
@@ -111,9 +155,16 @@ export default function PricingPage() {
           <Link href="/" className="text-2xl font-bold">
             Check Ton Véhicule
           </Link>
-          <Link href="/" className="text-sm text-gray-600 hover:underline">
-            ← Retour à l'accueil
-          </Link>
+          <div className="flex items-center gap-4">
+            {isAuthenticated && userEmail && (
+              <div className="text-sm text-gray-600 hidden sm:inline-block">
+                {userEmail}
+              </div>
+            )}
+            <Link href="/" className="text-sm text-gray-600 hover:underline">
+              ← Retour à l'accueil
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -124,21 +175,29 @@ export default function PricingPage() {
           Analysez vos annonces de véhicules d'occasion en toute confiance
         </p>
 
-        {/* Email input */}
-        <div className="max-w-md mx-auto mb-12">
-          <label className="block text-sm font-medium text-gray-900 mb-2 text-left">Votre email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setError(null)
-            }}
-            placeholder="vous@exemple.com"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-black focus:border-transparent outline-none"
-          />
-          {error && <p className="mt-2 text-sm text-red-600 text-left">{error}</p>}
-        </div>
+        {/* Message d'authentification */}
+        {!isAuthenticated && (
+          <div className="max-w-md mx-auto mb-12 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>🔐 Connexion requise</strong><br />
+              Vous devez être connecté pour acheter un pack. Cliquez sur "Choisir ce plan" et vous serez redirigé vers la connexion.
+            </p>
+          </div>
+        )}
+
+        {isAuthenticated && userEmail && (
+          <div className="max-w-md mx-auto mb-12 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800">
+              ✅ <strong>Connecté en tant que :</strong> {userEmail}
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="max-w-md mx-auto mb-8 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
       </section>
 
       {/* Plans */}
@@ -217,8 +276,10 @@ export default function PricingPage() {
                     </svg>
                     Redirection...
                   </span>
-                ) : (
+                ) : isAuthenticated ? (
                   'Choisir ce plan'
+                ) : (
+                  'Se connecter et acheter'
                 )}
               </button>
             </div>
@@ -239,8 +300,8 @@ export default function PricingPage() {
             Paiement sécurisé via Stripe
           </h4>
           <p className="text-sm text-gray-700">
-            Vos crédits sont activés immédiatement après paiement. Vous recevrez une confirmation par email. Les
-            crédits sont liés à votre adresse email.
+            Vos crédits sont activés immédiatement après paiement. Vous recevrez une confirmation par email.
+            {isAuthenticated && ' Les crédits sont liés à votre compte.'}
           </p>
         </div>
       </section>

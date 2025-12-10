@@ -78,57 +78,67 @@ export default function Header() {
         </Link>
 
         {/* Navigation */}
-        <nav className="flex items-center space-x-4">
-          {/* Badge Crédits */}
-          {isAuthenticated && overview && (
-            <Link
-              href="/dashboard"
-              className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
-            >
-              <span className="text-lg">💎</span>
-              {overview.credits.isUnlimited ? (
-                <span className="text-sm font-semibold text-blue-700">Illimité</span>
-              ) : (
-                <span className="text-sm font-semibold text-blue-700">
-                  {overview.credits.remaining ?? 0} Crédit{(overview.credits.remaining ?? 0) > 1 ? 's' : ''}
-                </span>
-              )}
-            </Link>
-          )}
-
-          {/* Liens principaux */}
+        <nav className="flex items-center space-x-2 sm:space-x-4">
+          {/* État : CONNECTÉ */}
           {isAuthenticated ? (
             <>
+              {/* Badge Crédits */}
+              {overview && (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                  title="Voir mes crédits"
+                >
+                  <span className="text-lg">💎</span>
+                  {overview.credits.isUnlimited ? (
+                    <span className="text-sm font-semibold text-blue-700">Illimité</span>
+                  ) : (
+                    <span className="text-sm font-semibold text-blue-700">
+                      {overview.credits.remaining ?? 0} Crédit{(overview.credits.remaining ?? 0) > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </Link>
+              )}
+
               <Link
                 href="/dashboard"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden sm:inline-block"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden md:inline-block"
               >
                 Dashboard
               </Link>
               <Link
                 href="/pricing"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden sm:inline-block"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden md:inline-block"
               >
-                Tarifs
+                Recharger
               </Link>
               <button
                 onClick={handleSignOut}
-                className="text-sm font-medium text-gray-700 hover:text-gray-900"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 px-2 py-1"
+                title="Déconnexion"
               >
-                Déconnexion
+                <span className="hidden sm:inline">Déconnexion</span>
+                <span className="sm:hidden">✕</span>
               </button>
             </>
           ) : (
             <>
+              {/* État : VISITEUR (non connecté) */}
+              <Link
+                href="/"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden sm:inline-block"
+              >
+                Accueil
+              </Link>
               <Link
                 href="/pricing"
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 hidden sm:inline-block"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900"
               >
                 Tarifs
               </Link>
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
               >
                 Connexion
               </Link>

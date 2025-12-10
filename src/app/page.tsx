@@ -245,9 +245,9 @@ export default function Home() {
           </p>
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium">Prénom</label>
+              <label className="block text-sm font-medium text-gray-900">Prénom</label>
               <input
-                className="mt-1 w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="mt-1 w-full rounded-md border px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-black"
                 value={prenom}
                 onChange={(e) => setPrenom(e.target.value)}
                 placeholder="Votre prénom"
@@ -255,10 +255,10 @@ export default function Home() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Email</label>
+              <label className="block text-sm font-medium text-gray-900">Email</label>
               <input
                 type="email"
-                className="mt-1 w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="mt-1 w-full rounded-md border px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-black"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="vous@exemple.com"
@@ -266,9 +266,9 @@ export default function Home() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Vous êtes</label>
+              <label className="block text-sm font-medium text-gray-900">Vous êtes</label>
               <select
-                className="mt-1 w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-black"
+                className="mt-1 w-full rounded-md border px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-black"
                 value={typeUser}
                 onChange={(e) => setTypeUser(e.target.value)}
               >
@@ -324,7 +324,7 @@ export default function Home() {
 
           <div className="mt-4 space-y-3">
             <textarea
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black min-h-[120px]"
+              className="w-full rounded-md border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-black min-h-[120px]"
               placeholder="Exemple : Clio 4 - 1.5 dCi 90 ch Zen, 2016, 120 000 km, diesel, CT OK, 8 000 €, 1ère main, non fumeur, carnet à jour…"
               value={demoAnnonce}
               onChange={(e) => setDemoAnnonce(e.target.value)}
@@ -332,7 +332,7 @@ export default function Home() {
 
             <input
               type="email"
-              className="w-full rounded-md border px-3 py-2 text-sm"
+              className="w-full rounded-md border px-3 py-2 text-sm text-gray-900"
               placeholder="Ton email (optionnel, pour recevoir le rapport)"
               value={demoEmail}
               onChange={(e) => setDemoEmail(e.target.value)}

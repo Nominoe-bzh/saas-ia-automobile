@@ -126,7 +126,7 @@ export default function PricingPage() {
 
         {/* Email input */}
         <div className="max-w-md mx-auto mb-12">
-          <label className="block text-sm font-medium text-gray-700 mb-2 text-left">Votre email</label>
+          <label className="block text-sm font-medium text-gray-900 mb-2 text-left">Votre email</label>
           <input
             type="email"
             value={email}
@@ -135,7 +135,7 @@ export default function PricingPage() {
               setError(null)
             }}
             placeholder="vous@exemple.com"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-black focus:border-transparent outline-none"
           />
           {error && <p className="mt-2 text-sm text-red-600 text-left">{error}</p>}
         </div>
